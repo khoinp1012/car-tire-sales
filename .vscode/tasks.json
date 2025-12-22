@@ -1,0 +1,111 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Run Expo Android (with Android SDK)",
+			"command": "npx expo start --android --go",
+			"args": [],
+			"options": {
+				"env": {
+					"ANDROID_SDK_ROOT": "/home/khoi/Android/Sdk"
+				}
+			},
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"type": "shell",
+			"label": "Run Expo Development Build Android",
+			"command": "npx expo run:android",
+			"args": [],
+			"options": {
+				"env": {
+					"ANDROID_HOME": "/home/khoi/Android/Sdk",
+					"ANDROID_SDK_ROOT": "/home/khoi/Android/Sdk"
+				}
+			},
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"type": "shell",
+			"label": "Run Expo bundle",
+			"command": "npx expo start --clear",
+			"args": [],
+			"options": {
+				"env": {
+					"ANDROID_HOME": "/home/khoi/Android/Sdk",
+					"ANDROID_SDK_ROOT": "/home/khoi/Android/Sdk"
+				}
+			},
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"type": "shell",
+			"label": "LOCAL: Build Standalone Release APK (via eas)",
+			"command": "npx expo prebuild --clean && npx eas build --platform android --profile standalone --local",
+			"args": [],
+			"options": {
+				"env": {
+					"ANDROID_HOME": "/home/khoi/Android/Sdk",
+					"ANDROID_SDK_ROOT": "/home/khoi/Android/Sdk"
+				}
+			},
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"type": "shell",
+			"label": "LOCAL: Build Development APK (with Bundle)",
+			"command": "npm install expo-dev-client && npx expo run:android --variant debug",
+			"args": [],
+			"options": {
+				"env": {
+					"ANDROID_HOME": "/home/khoi/Android/Sdk",
+					"ANDROID_SDK_ROOT": "/home/khoi/Android/Sdk"
+				}
+			},
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"type": "shell",
+			"label": "ONLINE: EAS Build Production APK",
+			"command": "npx expo prebuild --clean && npx eas build --platform android --profile production",
+			"args": [],
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"type": "shell",
+			"label": "ONLINE: EAS Build Preview APK",
+			"command": "npx expo prebuild --clean && npx eas build --platform android --profile preview",
+			"args": [],
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"type": "shell",
+			"label": "LOCAL: Expo Development Build",
+			"command": "npm install expo-dev-client && npx expo install --fix && npx expo run:android --variant debug",
+			"args": [],
+			"options": {
+				"env": {
+					"ANDROID_HOME": "/home/khoi/Android/Sdk",
+					"ANDROID_SDK_ROOT": "/home/khoi/Android/Sdk"
+				}
+			},
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

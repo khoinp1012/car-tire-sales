@@ -1,0 +1,22 @@
+{
+  "tire_models": {
+    "admin": ["manage", "view"],
+    "inventory_manager": ["view"],
+    "seller": ["view"]
+  },
+  "inventory_items": {
+    "admin": ["insert", "view", "manage"],
+    "inventory_manager": ["insert", "view", "manage"],
+    "seller": ["view"]
+  },
+  "customers": {
+    "admin": ["manage", "view"],
+    "inventory_manager": ["view"],
+    "seller": ["manage", "view"]
+  },
+  "sales_orders": {
+    "admin": ["view", "manage"],
+    "inventory_manager": ["view"],
+    "seller": ["view", "insert", "manage"]
+  }
+}

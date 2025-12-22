@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hóa Đơn Bán Hàng - Tối Giản</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 15px;
+            line-height: 1.4;
+            color: #000;
+            font-size: 12px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            font-weight: bold;
+            color: #000;
+            margin: 0;
+            text-transform: uppercase;
+        }
+        
+        .invoice-info {
+            margin-bottom: 20px;
+        }
+        
+        .invoice-info table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .invoice-info td {
+            padding: 4px 0;
+            vertical-align: top;
+        }
+        
+        .invoice-info .label {
+            font-weight: bold;
+            width: 100px;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        
+        .items-table th,
+        .items-table td {
+            border: 1px solid #000;
+            padding: 6px 4px;
+            text-align: left;
+            font-size: 11px;
+        }
+        
+        .items-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .items-table .number-col {
+            text-align: center;
+            width: 35px;
+        }
+        
+        .items-table .price-col {
+            text-align: right;
+            width: 80px;
+        }
+        
+        .totals {
+            margin-top: 15px;
+        }
+        
+        .totals table {
+            width: 100%;
+            max-width: 300px;
+            margin-left: auto;
+            border-collapse: collapse;
+        }
+        
+        .totals td {
+            padding: 4px 8px;
+            border-bottom: 1px solid #ccc;
+        }
+        
+        .totals .label {
+            font-weight: bold;
+            text-align: right;
+            width: 60%;
+        }
+        
+        .totals .amount {
+            text-align: right;
+            width: 40%;
+        }
+        
+        .totals .final-total {
+            font-weight: bold;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+        }
+        
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Hóa Đơn Bán Hàng</h1>
+    </div>
+    
+    <div class="invoice-info">
+        <table>
+            <tr>
+                <td class="label">Số HĐ:</td>
+                <td>{INVOICE_NUMBER}</td>
+                <td class="label" style="text-align: right;">Ngày:</td>
+                <td style="text-align: right;">{ORDER_DATE}</td>
+            </tr>
+            <tr>
+                <td class="label">Khách hàng:</td>
+                <td>{CUSTOMER_NAME}</td>
+                <td class="label" style="text-align: right;">SĐT:</td>
+                <td style="text-align: right;">{CUSTOMER_PHONE}</td>
+            </tr>
+        </table>
+    </div>
+    
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th class="number-col">STT</th>
+                <th>Sản phẩm</th>
+                <th>Hãng</th>
+                <th>Size</th>
+                <th class="price-col">Giá</th>
+                <th class="price-col">T.Tiền</th>
+            </tr>
+        </thead>
+        <tbody>
+            {ITEMS_START}
+            <tr>
+                <td class="number-col">{ITEM_INDEX}</td>
+                <td>{ITEM_FULL_DESCRIPTION}</td>
+                <td>{ITEM_BRAND}</td>
+                <td>{ITEM_SIZE}</td>
+                <td class="price-col">{ITEM_UNIT_PRICE}</td>
+                <td class="price-col">{ITEM_UNIT_PRICE}</td>
+            </tr>
+            {ITEMS_END}
+        </tbody>
+    </table>
+    
+    <div class="totals">
+        <table>
+            <tr>
+                <td class="label">Tổng:</td>
+                <td class="amount">{SUBTOTAL} VNĐ</td>
+            </tr>
+            <tr>
+                <td class="label">Giảm giá ({DISCOUNT_PERCENT}%):</td>
+                <td class="amount">-{DISCOUNT_AMOUNT} VNĐ</td>
+            </tr>
+            <tr class="final-total">
+                <td class="label">THÀNH TIỀN:</td>
+                <td class="amount">{FINAL_TOTAL} VNĐ</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="footer">
+        <p>Cảm ơn quý khách!</p>
+    </div>
+</body>
+</html>

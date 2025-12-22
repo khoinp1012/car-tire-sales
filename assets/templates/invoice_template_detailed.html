@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hóa Đơn Bán Hàng - Chi Tiết</title>
+    <style>
+        @page {
+            margin: 15px;
+            size: A4;
+        }
+        
+        body {
+            font-family: 'Arial', 'Times New Roman', sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+            font-size: 14px;
+            background-color: #fff;
+        }
+        
+        .letterhead {
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 15px;
+            background: linear-gradient(135deg, #1976d2, #1565c0);
+            color: white;
+            border-radius: 10px;
+        }
+        
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .company-slogan {
+            font-size: 14px;
+            margin: 5px 0 0 0;
+            font-style: italic;
+        }
+        
+        .company-contact {
+            font-size: 12px;
+            margin: 5px 0 0 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1976d2;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .invoice-info {
+            margin-bottom: 30px;
+            background: linear-gradient(to right, #f8f9fa, #e3f2fd);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #1976d2;
+        }
+        
+        .invoice-info table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .invoice-info td {
+            padding: 10px 0;
+            vertical-align: top;
+            font-size: 15px;
+        }
+        
+        .invoice-info .label {
+            font-weight: bold;
+            width: 140px;
+            color: #1976d2;
+            font-size: 16px;
+        }
+        
+        .invoice-info .value {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .items-section-header {
+            background-color: #1976d2;
+            color: white;
+            padding: 15px;
+            margin: 30px 0 0 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 0 0 8px 8px;
+            overflow: hidden;
+        }
+        
+        .items-table th,
+        .items-table td {
+            border: 1px solid #ddd;
+            padding: 15px 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+        
+        .items-table th {
+            background: linear-gradient(to bottom, #1976d2, #1565c0);
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            font-size: 15px;
+        }
+        
+        .items-table tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .items-table tbody tr:hover {
+            background-color: #e3f2fd;
+        }
+        
+        .items-table .number-col {
+            text-align: center;
+            width: 60px;
+            font-weight: bold;
+        }
+        
+        .items-table .price-col {
+            text-align: right;
+            width: 130px;
+            font-weight: bold;
+            color: #1976d2;
+        }
+        
+        .totals-section-header {
+            background-color: #4caf50;
+            color: white;
+            padding: 12px;
+            margin: 40px 0 0 0;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 8px 8px 0 0;
+            width: 500px;
+            margin-left: auto;
+        }
+        
+        .totals {
+            margin-top: 0;
+        }
+        
+        .totals table {
+            width: 500px;
+            margin-left: auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            border-radius: 0 0 8px 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .totals td {
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+            font-size: 16px;
+        }
+        
+        .totals .label {
+            font-weight: bold;
+            text-align: right;
+            width: 60%;
+            color: #1976d2;
+        }
+        
+        .totals .amount {
+            text-align: right;
+            width: 40%;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .totals .final-total {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(to right, #4caf50, #388e3c);
+            border: none;
+        }
+        
+        .terms-conditions {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #fff3e0;
+            border-radius: 8px;
+            border-left: 5px solid #ff9800;
+        }
+        
+        .terms-conditions h3 {
+            margin: 0 0 10px 0;
+            color: #ff9800;
+            font-size: 16px;
+        }
+        
+        .terms-conditions ul {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .terms-conditions li {
+            margin-bottom: 5px;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #666;
+            border-top: 3px solid #1976d2;
+            padding-top: 20px;
+        }
+        
+        .footer .thank-you {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+        
+        .footer .wishes {
+            font-size: 16px;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+        
+        .footer .contact-info {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .currency {
+            font-weight: normal;
+        }
+        
+        /* Print styles */
+        @media print {
+            body {
+                margin: 0;
+                padding: 10px;
+            }
+            
+            .letterhead {
+                background: #1976d2 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .items-table {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="letterhead">
+        <div class="company-name">CỬA HÀNG LỐP XE ABC</div>
+        <div class="company-slogan">Chất lượng đảm bảo - Giá cả hợp lý - Dịch vụ tận tâm</div>
+        <div class="company-contact">📍 123 Đường ABC, Quận XYZ, TP.HCM | ☎️ 0123.456.789 | 📧 info@lopxeabc.com</div>
+    </div>
+    
+    <div class="header">
+        <h1>Hóa Đơn Bán Hàng</h1>
+    </div>
+    
+    <div class="invoice-info">
+        <table>
+            <tr>
+                <td class="label">Số hóa đơn:</td>
+                <td class="value">{INVOICE_NUMBER}</td>
+                <td class="label" style="text-align: right;">Ngày lập:</td>
+                <td class="value" style="text-align: right;">{ORDER_DATE}</td>
+            </tr>
+            <tr>
+                <td class="label">Tên khách hàng:</td>
+                <td class="value">{CUSTOMER_NAME}</td>
+                <td class="label" style="text-align: right;">Số điện thoại:</td>
+                <td class="value" style="text-align: right;">{CUSTOMER_PHONE}</td>
+            </tr>
+            <tr>
+                <td class="label">Hình thức thanh toán:</td>
+                <td class="value">Tiền mặt</td>
+                <td class="label" style="text-align: right;">Người bán:</td>
+                <td class="value" style="text-align: right;">Nhân viên bán hàng</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="items-section-header">
+        CHI TIẾT SẢN PHẨM
+    </div>
+    
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th class="number-col">STT</th>
+                <th>Mô tả chi tiết sản phẩm</th>
+                <th>Thương hiệu</th>
+                <th>Kích cỡ</th>
+                <th class="price-col">Đơn giá (VNĐ)</th>
+                <th class="price-col">Thành tiền (VNĐ)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {ITEMS_START}
+            <tr>
+                <td class="number-col">{ITEM_INDEX}</td>
+                <td>
+                    <strong>{ITEM_FULL_DESCRIPTION}</strong>
+                    {ITEM_SEQUENCE:CONDITIONAL_START}
+                    <br><small style="color: #666;">Mã SP: {ITEM_SEQUENCE}</small>
+                    {ITEM_SEQUENCE:CONDITIONAL_END}
+                </td>
+                <td><strong>{ITEM_BRAND}</strong></td>
+                <td><strong>{ITEM_SIZE}</strong></td>
+                <td class="price-col">{ITEM_UNIT_PRICE}</td>
+                <td class="price-col"><strong>{ITEM_UNIT_PRICE}</strong></td>
+            </tr>
+            {ITEMS_END}
+        </tbody>
+    </table>
+    
+    <div class="totals-section-header">
+        TỔNG KẾT THANH TOÁN
+    </div>
+    
+    <div class="totals">
+        <table>
+            <tr>
+                <td class="label">Tổng tiền hàng:</td>
+                <td class="amount">{SUBTOTAL} <span class="currency">VNĐ</span></td>
+            </tr>
+            <tr>
+                <td class="label">Chiết khấu ({DISCOUNT_PERCENT}%):</td>
+                <td class="amount">-{DISCOUNT_AMOUNT} <span class="currency">VNĐ</span></td>
+            </tr>
+            <tr>
+                <td class="label">Thuế VAT (0%):</td>
+                <td class="amount">0 <span class="currency">VNĐ</span></td>
+            </tr>
+            <tr class="final-total">
+                <td class="label">TỔNG THANH TOÁN:</td>
+                <td class="amount">{FINAL_TOTAL} <span class="currency">VNĐ</span></td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="terms-conditions">
+        <h3>⚠️ Điều khoản và điều kiện:</h3>
+        <ul>
+            <li>Vui lòng kiểm tra kỹ sản phẩm trước khi rời khỏi cửa hàng</li>
+            <li>Bảo hành theo chính sách của từng hãng sản xuất</li>
+            <li>Đổi trả trong vòng 7 ngày nếu có lỗi do nhà sản xuất</li>
+            <li>Lưu giữ hóa đơn để được hỗ trợ bảo hành tốt nhất</li>
+            <li>Liên hệ hotline để được tư vấn và hỗ trợ 24/7</li>
+        </ul>
+    </div>
+    
+    <div class="footer">
+        <div class="thank-you">🙏 CẢM ỠN QUÝ KHÁCH ĐÃ TIN TƯỞNG VÀ SỬ DỤNG DỊCH VỤ! 🙏</div>
+        <div class="wishes">🚗 Chúc quý khách lái xe an toàn và hạnh phúc! 🚗</div>
+        <div class="contact-info">
+            📱 Hotline hỗ trợ: 0123.456.789 | 🌐 Website: www.lopxeabc.com | 📧 Email: support@lopxeabc.com
+        </div>
+    </div>
+</body>
+</html>

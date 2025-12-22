@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phiếu Thu - Receipt Style</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 10px;
+            line-height: 1.3;
+            color: #000;
+            font-size: 11px;
+            max-width: 300px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 10px;
+        }
+        
+        .header h1 {
+            font-size: 14px;
+            font-weight: bold;
+            color: #000;
+            margin: 0;
+            text-transform: uppercase;
+        }
+        
+        .shop-info {
+            text-align: center;
+            font-size: 9px;
+            margin-bottom: 10px;
+        }
+        
+        .invoice-info {
+            margin-bottom: 15px;
+            font-size: 10px;
+        }
+        
+        .invoice-info .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        
+        .invoice-info .label {
+            font-weight: bold;
+        }
+        
+        .items-section {
+            margin-bottom: 15px;
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 10px 0;
+        }
+        
+        .items-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 9px;
+            text-transform: uppercase;
+        }
+        
+        .item-row {
+            margin-bottom: 8px;
+            font-size: 10px;
+        }
+        
+        .item-name {
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        
+        .item-details {
+            display: flex;
+            justify-content: space-between;
+            color: #666;
+            font-size: 9px;
+        }
+        
+        .item-price {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+        }
+        
+        .totals {
+            margin-bottom: 15px;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+            font-size: 10px;
+        }
+        
+        .total-row.final {
+            font-weight: bold;
+            font-size: 12px;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+            padding: 5px 0;
+            margin-top: 5px;
+        }
+        
+        .footer {
+            text-align: center;
+            font-size: 8px;
+            color: #666;
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+            margin-top: 15px;
+        }
+        
+        .footer p {
+            margin: 2px 0;
+        }
+        
+        /* Print optimizations */
+        @media print {
+            body {
+                margin: 0;
+                padding: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="shop-info">
+            <strong>CUA HANG LOP XE</strong><br>
+            123 Duong ABC, Quan XYZ<br>
+            Tel: 0123.456.789
+        </div>
+        <h1>PHIEU THANH TOAN</h1>
+    </div>
+    
+    <div class="invoice-info">
+        <div class="row">
+            <span class="label">So HD:</span>
+            <span>{INVOICE_NUMBER}</span>
+        </div>
+        <div class="row">
+            <span class="label">Ngay:</span>
+            <span>{ORDER_DATE}</span>
+        </div>
+        <div class="row">
+            <span class="label">Khach:</span>
+            <span>{CUSTOMER_NAME}</span>
+        </div>
+        <div class="row">
+            <span class="label">SDT:</span>
+            <span>{CUSTOMER_PHONE}</span>
+        </div>
+    </div>
+    
+    <div class="items-section">
+        <div class="items-header">
+            <span>SAN PHAM</span>
+            <span>THANH TIEN</span>
+        </div>
+        
+        {ITEMS_START}
+        <div class="item-row">
+            <div class="item-name">{ITEM_FULL_DESCRIPTION}</div>
+            <div class="item-details">
+                <span>Brand: {ITEM_BRAND}</span>
+                <span>Size: {ITEM_SIZE}</span>
+            </div>
+            <div class="item-price">
+                <span>1 x {ITEM_UNIT_PRICE}</span>
+                <span>{ITEM_UNIT_PRICE} VND</span>
+            </div>
+        </div>
+        {ITEMS_END}
+    </div>
+    
+    <div class="totals">
+        <div class="total-row">
+            <span>Tong cong:</span>
+            <span>{SUBTOTAL} VND</span>
+        </div>
+        <div class="total-row">
+            <span>Giam gia ({DISCOUNT_PERCENT}%):</span>
+            <span>-{DISCOUNT_AMOUNT} VND</span>
+        </div>
+        <div class="total-row final">
+            <span>THANH TOAN:</span>
+            <span>{FINAL_TOTAL} VND</span>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p><strong>CAM ON QUY KHACH!</strong></p>
+        <p>Lai xe an toan!</p>
+        <p>----------------------------</p>
+        <p>Luu giu phieu de bao hanh</p>
+    </div>
+</body>
+</html>

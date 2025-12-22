@@ -1,0 +1,4 @@
+In this folder (server_side), I want to build script for setup database in server side of Appwrite. I provide you 2 file:
+- python-server-playground is the file provide by Appwrite to create database for their server via their API, use it as reference
+- database schema is the schema I want to build and my intention.
+I want you to create a scipt file to create database schema in Appwrite for me.
