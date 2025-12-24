@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
 import { AutocompleteDropdown, AutocompleteDropdownContextProvider } from 'react-native-autocomplete-dropdown';
 import ThemedButton from '../components/ThemedButton';
-import appwrite from '../constants/appwrite';
+import appwrite, { DATABASE_ID, INVENTORY_COLLECTION_ID } from '../constants/appwrite';
 import { Databases, Query } from 'react-native-appwrite';
 import { getAutofillValues } from '../utils/autofill';
 import { formatVNCurrency } from '../utils/invoiceUtils';
@@ -26,9 +26,6 @@ interface InventoryItem {
   [key: string]: any;
 }
 
-const DB_ID = '687ca1a800338d2b13ae';
-const COLLECTION_ID = '687ca1ac00054b181ab0';
-
 const FindInventoryContent: React.FC = () => {
   const { lang } = useLanguage();
   const { permissions } = usePermissions();
@@ -37,33 +34,33 @@ const FindInventoryContent: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [searchPerformed, setSearchPerformed] = useState<boolean>(false);
-  
+
   // Search criteria - using refs like insert_inventory
   const [selectedBrand, setSelectedBrand] = useState<string>('');
   const [selectedRadius, setSelectedRadius] = useState<string>('');
   const brandInputTextRef = useRef('');
   const radiusInputTextRef = useRef('');
-  
+
   // Autofill data - base options
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
   const [radiusOptions, setRadiusOptions] = useState<string[]>([]);
-  
+
   // Filtered options for dropdowns (following insert_inventory pattern)
   const [filteredBrandOptions, setFilteredBrandOptions] = useState<{ id: string; title: string }[]>([]);
   const [filteredRadiusOptions, setFilteredRadiusOptions] = useState<{ id: string; title: string }[]>([]);
-  
+
   // Current input text for filtering
   const [brandInputText, setBrandInputText] = useState('');
   const [radiusInputText, setRadiusInputText] = useState('');
-  
+
   // Force remount keys for when component internal state gets out of sync
   const [brandForceKey, setBrandForceKey] = useState(0);
   const [radiusForceKey, setRadiusForceKey] = useState(0);
-  
+
   // Initial values for dropdowns
   const [brandInitialValue, setBrandInitialValue] = useState<{ id: string; title: string } | undefined>(undefined);
   const [radiusInitialValue, setRadiusInitialValue] = useState<{ id: string; title: string } | undefined>(undefined);
-  
+
   const [dropdownResetKey, setDropdownResetKey] = useState(0);
 
   useEffect(() => {
@@ -81,9 +78,9 @@ const FindInventoryContent: React.FC = () => {
     }
 
     const searchText = inputText.toLowerCase().trim();
-    
+
     // Filter existing options that match the input
-    const filtered = options.filter(opt => 
+    const filtered = options.filter(opt =>
       opt.toLowerCase().includes(searchText)
     ).map(opt => ({
       id: opt,
@@ -91,10 +88,10 @@ const FindInventoryContent: React.FC = () => {
     }));
 
     // Always include the current input as a selectable option (for custom entries)
-    const exactMatch = options.find(opt => 
+    const exactMatch = options.find(opt =>
       opt.toLowerCase() === searchText
     );
-    
+
     if (!exactMatch && inputText.trim()) {
       // Add the custom input as the first option
       filtered.unshift({
@@ -118,20 +115,20 @@ const FindInventoryContent: React.FC = () => {
   const loadAutofillData = async () => {
     try {
       console.log('[FindInventoryScreen] Loading autofill data...');
-      
+
       // Load brand options from autofill (store as string array)
       const brands = await getAutofillValues('brand', 'inventory_items');
       setBrandOptions(brands);
-      
+
       // Load radius options from autofill (store as string array)
       const radiuses = await getAutofillValues('radius_size', 'inventory_items');
       setRadiusOptions(radiuses);
-      
-      console.log('[FindInventoryScreen] Autofill data loaded:', { 
-        brands: brands.length, 
-        radiuses: radiuses.length 
+
+      console.log('[FindInventoryScreen] Autofill data loaded:', {
+        brands: brands.length,
+        radiuses: radiuses.length
       });
-      
+
       setDropdownResetKey(k => k + 1);
     } catch (e) {
       console.error('[FindInventoryScreen] Failed to load autofill data:', e);
@@ -148,38 +145,38 @@ const FindInventoryContent: React.FC = () => {
     setLoading(true);
     setError(null);
     setSearchPerformed(true);
-    
+
     try {
-      console.log('[FindInventoryScreen] Starting search:', { 
-        selectedBrand, 
-        selectedRadius 
+      console.log('[FindInventoryScreen] Starting search:', {
+        selectedBrand,
+        selectedRadius
       });
-      
+
       const databases = new Databases(appwrite);
       const queries = [
         Query.equal('sold', false), // Only unsold items
       ];
-      
+
       // Add brand filter if selected
       if (selectedBrand) {
         queries.push(Query.equal('brand', selectedBrand));
       }
-      
+
       // Add radius filter if selected
       if (selectedRadius) {
         queries.push(Query.equal('radius_size', parseInt(selectedRadius)));
       }
-      
+
       // Order by sequence for consistent results
       queries.push(Query.orderDesc('sequence'));
-      
-      const result = await databases.listDocuments(DB_ID, COLLECTION_ID, queries);
-      
+
+      const result = await databases.listDocuments(DATABASE_ID, INVENTORY_COLLECTION_ID, queries);
+
       console.log('[FindInventoryScreen] Search completed:', {
         totalFound: result.documents.length,
         queries: queries.length
       });
-      
+
       // Map documents to InventoryItem type
       const inventoryItems = result.documents.map((doc: any) => ({
         $id: doc.$id,
@@ -192,9 +189,9 @@ const FindInventoryContent: React.FC = () => {
         full_description: doc.full_description,
         ...doc
       }));
-      
+
       setItems(inventoryItems);
-      
+
     } catch (e: any) {
       console.error('[FindInventoryScreen] Search failed:', e);
       setError(i18n.t('failedToSearchInventory', { locale: lang }));
@@ -234,14 +231,14 @@ const FindInventoryContent: React.FC = () => {
     <AutocompleteDropdownContextProvider>
       <View style={styles.container}>
         <Text style={styles.title}>{i18n.t('findInventory', { locale: lang })}</Text>
-        
+
         {/* Search Form */}
         <View style={styles.searchForm}>
           {/* Brand Selection */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{i18n.t('brandLabel', { locale: lang })}</Text>
             <View style={styles.dropdownContainer}>
-                            <AutocompleteDropdown
+              <AutocompleteDropdown
                 key={`${dropdownResetKey}-brand-${brandForceKey}`}
                 closeOnSubmit={true}
                 direction="down"
@@ -292,7 +289,7 @@ const FindInventoryContent: React.FC = () => {
                 key={`${dropdownResetKey}-radius-${radiusForceKey}`}
                 closeOnSubmit={true}
                 direction="down"
-                clearOnFocus={false} 
+                clearOnFocus={false}
                 suggestionsListMaxHeight={200}
                 useFilter={false} // We implement custom filtering
                 editable={true}
@@ -350,16 +347,16 @@ const FindInventoryContent: React.FC = () => {
 
         {/* Results Section */}
         <View style={styles.resultsContainer}>
-          {loading && <Text style={styles.infoText}>Searching...</Text>}
-          
+          {loading && <Text style={styles.infoText}>{i18n.t('searching', { locale: lang })}</Text>}
+
           {error && <Text style={styles.errorText}>{error}</Text>}
-          
+
           {searchPerformed && !loading && !error && (
             <Text style={styles.resultsHeader}>
               {i18n.t('foundItems', { locale: lang })} {items.length} {items.length === 1 ? i18n.t('unsoldItem', { locale: lang }) : i18n.t('unsoldItems', { locale: lang })}
             </Text>
           )}
-          
+
           <FlatList
             data={items}
             keyExtractor={item => item.$id}
@@ -367,7 +364,7 @@ const FindInventoryContent: React.FC = () => {
             ListEmptyComponent={
               searchPerformed && !loading && !error ? (
                 <Text style={styles.infoText}>
-                  No unsold inventory found matching your criteria.
+                  {i18n.t('noUnsoldInventoryFound', { locale: lang })}
                 </Text>
               ) : null
             }

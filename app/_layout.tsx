@@ -10,6 +10,9 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { LanguageProvider, useLanguage } from '@/components/LanguageContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import i18n from '@/constants/i18n';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -48,9 +51,11 @@ export default function RootLayout() {
   }
 
   return (
-    <LanguageProvider>
-      <RootLayoutNav />
-    </LanguageProvider>
+    <QueryClientProvider client={queryClient}>
+      <LanguageProvider>
+        <RootLayoutNav />
+      </LanguageProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -73,22 +78,26 @@ function RootLayoutNav() {
         <Stack.Screen name="modify_inventory" options={{ title: i18n.t('modifyInventory', { locale: lang }) }} />
         <Stack.Screen name="pending_sale" options={{ title: i18n.t('pendingSale', { locale: lang }) }} />
         <Stack.Screen name="print_order" options={{ title: i18n.t('printOrder', { locale: lang }) }} />
-        <Stack.Screen 
-          name="scan_modify_inventory" 
-          options={{ 
+        <Stack.Screen
+          name="scan_modify_inventory"
+          options={{
             title: i18n.t('scanQRToModify', { locale: lang }),
             presentation: 'fullScreenModal',
             headerShown: false
-          }} 
+          }}
         />
-        <Stack.Screen 
-          name="scan_pending_sale" 
-          options={{ 
+        <Stack.Screen
+          name="scan_pending_sale"
+          options={{
             title: i18n.t('scanQRForPendingSale', { locale: lang }),
             presentation: 'fullScreenModal',
             headerShown: false
-          }} 
+          }}
         />
+        <Stack.Screen name="location_tracking" options={{ title: i18n.t('locationTracking', { locale: lang }) }} />
+        <Stack.Screen name="manage_roles" options={{ title: i18n.t('manageRoles', { locale: lang }) }} />
+        <Stack.Screen name="manage_users" options={{ title: i18n.t('manageUsers', { locale: lang }) }} />
+        <Stack.Screen name="permission_history" options={{ title: i18n.t('permissionHistory', { locale: lang }) }} />
       </Stack>
     </ThemeProvider>
   );

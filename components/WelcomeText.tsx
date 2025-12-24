@@ -14,11 +14,10 @@ export default function WelcomeText({ email }: { email?: string }) {
     <View style={{ alignItems: 'center', marginBottom: 24 }}>
       {/* Add Logo at the top */}
       <Logo size="large" style={{ marginBottom: 16 }} />
-      
+
       <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 16 }}>
         {i18n.t('welcome', { locale: lang })}{email ? `, ${email}` : ''}!
       </Text>
-      <Text style={{ fontSize: 16 }}>{i18n.t('loggedIn', { locale: lang })}</Text>
     </View>
   );
 }

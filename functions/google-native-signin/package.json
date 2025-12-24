@@ -1,0 +1,11 @@
+{
+    "name": "google-native-signin",
+    "version": "1.0.0",
+    "description": "Appwrite function to verify Google ID token and create user session",
+    "type": "module",
+    "main": "index.js",
+    "dependencies": {
+        "node-appwrite": "^14.1.0",
+        "google-auth-library": "^9.0.0"
+    }
+}

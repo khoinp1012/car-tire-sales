@@ -17,11 +17,11 @@ interface ProtectedRouteProps {
  * ProtectedRoute component that enforces permission-based access control
  * Wraps route components and handles unauthorized access
  */
-export function ProtectedRoute({ 
-  children, 
-  routeName, 
+export function ProtectedRoute({
+  children,
+  routeName,
   fallbackRoute = '/welcome',
-  showAlert = true 
+  showAlert = true
 }: ProtectedRouteProps) {
   const { permissions, loading, canAccessRoute, getAccessDeniedMessage } = usePermissions();
   const { lang } = useLanguage();
@@ -32,7 +32,7 @@ export function ProtectedRoute({
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{i18n.t('loading', { locale: lang })}</Text>
         </View>
       </View>
     );
@@ -43,7 +43,7 @@ export function ProtectedRoute({
 
   if (!hasAccess) {
     const errorMessage = getAccessDeniedMessage(routeName);
-    
+
     // Show alert if enabled
     if (showAlert) {
       Alert.alert(
@@ -77,14 +77,14 @@ export function ProtectedRoute({
           </Text>
           {permissions && (
             <Text style={styles.roleInfo}>
-              Current Role: {permissions.userGroups.length > 0 
-                ? permissions.userGroups.join(', ') 
-                : 'No role assigned'}
+              {i18n.t('currentRole', { locale: lang })}: {permissions.userGroups.length > 0
+                ? permissions.userGroups.join(', ')
+                : i18n.t('noRoleAssigned', { locale: lang })}
             </Text>
           )}
           <View style={styles.buttonContainer}>
             <ThemedButton
-              title={i18n.t('goBack', { locale: lang }) || 'Go Back'}
+              title={i18n.t('goBack', { locale: lang })}
               onPress={() => {
                 if (router.canGoBack()) {
                   router.back();
@@ -96,7 +96,7 @@ export function ProtectedRoute({
               style={styles.button}
             />
             <ThemedButton
-              title={i18n.t('goToWelcome', { locale: lang }) || 'Go to Welcome'}
+              title={i18n.t('goToWelcome', { locale: lang })}
               onPress={() => router.replace('/welcome')}
               color="#1976d2"
               style={styles.button}

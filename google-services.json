@@ -1,0 +1,76 @@
+{
+  "project_info": {
+    "project_number": "253987961768",
+    "project_id": "cartiresales-4c8be",
+    "storage_bucket": "cartiresales-4c8be.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:253987961768:android:d926ddfa9ef8669735bb9d",
+        "android_client_info": {
+          "package_name": "com.toanthang.tiresales"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "253987961768-7knqdq7cluvek0mllpps26ciqn2i665v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.toanthang.tiresales",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "253987961768-q5jf9j7q165qk6hqjia11ijmdeon65v2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZmtM4MAzKmHhj0QoBofzG_AWIxhuA6fA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "253987961768-q5jf9j7q165qk6hqjia11ijmdeon65v2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:253987961768:android:a5a817e337b703d435bb9d",
+        "android_client_info": {
+          "package_name": "com.tt"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "253987961768-q5jf9j7q165qk6hqjia11ijmdeon65v2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZmtM4MAzKmHhj0QoBofzG_AWIxhuA6fA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "253987961768-q5jf9j7q165qk6hqjia11ijmdeon65v2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,136 +1,189 @@
-import { useState, useEffect } from 'react';
-import { PermissionManager, UIPermissions } from '@/utils/PermissionManager';
-import { fetchUserTeams } from '@/utils/fetchUserTeams';
-import { account } from '@/constants/appwrite';
-
 /**
- * Custom hook that provides centralized permission management
- * Returns loading state and comprehensive permission object
+ * usePermissions Hook
+ * 
+ * React hook for checking permissions in components.
+ * Uses TanStack Query for efficient caching and background updates.
+ * 
+ * Usage:
+ *   const { canAccess, loading, userRole } = usePermissions();
  */
+
+import { account } from '@/constants/appwrite';
+import {
+    getUserPermissionContext,
+    canAccessCollection,
+    canAccessRoute as canAccessRouteService,
+    hasFeature,
+} from '@/utils/permissionService';
+import { getUserRole, initializeUserRecord } from '@/utils/userRoleService';
+import { PermissionAction, CollectionName, UserPermissionContext } from '@/types/permissions';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+// Query Keys
+export const PERMISSION_KEYS = {
+    all: ['permissions'] as const,
+    user: (userId: string) => [...PERMISSION_KEYS.all, 'user', userId] as const,
+    context: (userId: string) => [...PERMISSION_KEYS.all, 'context', userId] as const,
+    role: (userId: string) => [...PERMISSION_KEYS.all, 'role', userId] as const,
+    session: () => [...PERMISSION_KEYS.all, 'session'] as const,
+};
+
 export function usePermissions() {
-  const [permissions, setPermissions] = useState<UIPermissions | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let isMounted = true;
+    // 1. Fetch User Session
+    const sessionQuery = useQuery({
+        queryKey: PERMISSION_KEYS.session(),
+        queryFn: async () => {
+            try {
+                const user = await account.get();
+                // Initialize user record if they don't have one
+                await initializeUserRecord(user.$id);
+                return user;
+            } catch (err) {
+                console.error('[usePermissions] Session error:', err);
+                throw err;
+            }
+        },
+        staleTime: 1000 * 60 * 30, // Session is stable for 30 mins
+    });
 
-    async function loadPermissions() {
-      try {
-        setLoading(true);
-        setError(null);
+    const userId = sessionQuery.data?.$id || null;
 
-        // Check if user is authenticated
-        let isAuthenticated = false;
-        try {
-          await account.get();
-          isAuthenticated = true;
-        } catch (authError) {
-          // User is not authenticated
-          isAuthenticated = false;
+    // 2. Fetch User Role
+    const roleQuery = useQuery({
+        queryKey: PERMISSION_KEYS.role(userId || ''),
+        queryFn: () => getUserRole(userId!),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5, // Role is fresh for 5 mins
+    });
+
+    // 3. Fetch Permission Context
+    const contextQuery = useQuery({
+        queryKey: PERMISSION_KEYS.context(userId || ''),
+        queryFn: () => getUserPermissionContext(userId!),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5, // Context is fresh for 5 mins
+    });
+
+    const userRole = roleQuery.data || null;
+    const permissionContext = contextQuery.data || null;
+    const loading = sessionQuery.isLoading || roleQuery.isLoading || contextQuery.isLoading;
+    const error = sessionQuery.error || roleQuery.error || contextQuery.error ? 'Failed to load user information' : null;
+
+    /**
+     * Check if user can access a collection with specific action
+     * Uses cache if available, otherwise fetches
+     */
+    const canAccess = async (
+        collection: CollectionName,
+        action: PermissionAction
+    ): Promise<boolean> => {
+        if (!userId) return false;
+
+        // We can check local context first for speed
+        if (permissionContext) {
+            const collectionPerms = permissionContext.allowedCollections[collection];
+            if (collectionPerms && collectionPerms.includes(action)) {
+                return true;
+            }
         }
 
-        // Get user groups
-        const groups = isAuthenticated ? await fetchUserTeams() : [];
-
-        // Get permissions from PermissionManager
-        const userPermissions = PermissionManager.getUIPermissions(groups, isAuthenticated);
-
-        if (isMounted) {
-          setPermissions(userPermissions);
-          console.log('[usePermissions] Loaded permissions:', {
-            isAuthenticated,
-            groups,
-            permissions: userPermissions
-          });
-        }
-      } catch (err) {
-        console.error('[usePermissions] Error loading permissions:', err);
-        if (isMounted) {
-          setError('Failed to load permissions');
-          // Set default no-permission state
-          setPermissions(PermissionManager.getUIPermissions([], false));
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadPermissions();
-
-    return () => {
-      isMounted = false;
+        // Fallback to fresh check if not in context or context is missing
+        const result = await canAccessCollection(userId, collection, action);
+        return result.allowed;
     };
-  }, []);
 
-  /**
-   * Refresh permissions (useful after login/logout or group changes)
-   */
-  const refreshPermissions = async () => {
-    setLoading(true);
-    try {
-      let isAuthenticated = false;
-      try {
-        await account.get();
-        isAuthenticated = true;
-      } catch (authError) {
-        isAuthenticated = false;
-      }
+    /**
+     * Check if user can access a route
+     */
+    const canRoute = async (routeName: string): Promise<boolean> => {
+        if (!userId) return false;
 
-      const groups = isAuthenticated ? await fetchUserTeams() : [];
-      const userPermissions = PermissionManager.getUIPermissions(groups, isAuthenticated);
-      
-      setPermissions(userPermissions);
-      setError(null);
-    } catch (err) {
-      console.error('[usePermissions] Error refreshing permissions:', err);
-      setError('Failed to refresh permissions');
-      setPermissions(PermissionManager.getUIPermissions([], false));
-    } finally {
-      setLoading(false);
-    }
-  };
+        if (permissionContext) {
+            if (permissionContext.allowedRoutes.includes(routeName) || permissionContext.allowedRoutes.includes('*')) {
+                return true;
+            }
+        }
 
-  /**
-   * Check if user can access a specific route
-   */
-  const canAccessRoute = (routeName: string): boolean => {
-    if (!permissions) return false;
-    return PermissionManager.canAccessRoute(
-      routeName, 
-      permissions.userGroups, 
-      permissions.isAuthenticated
-    );
-  };
+        return await canAccessRouteService(userId, routeName);
+    };
 
-  /**
-   * Get error message for unauthorized route access
-   */
-  const getAccessDeniedMessage = (routeName: string): string => {
-    if (!permissions) return 'Loading permissions...';
-    return PermissionManager.getAccessDeniedMessage(
-      routeName,
-      permissions.userGroups,
-      permissions.isAuthenticated
-    );
-  };
+    /**
+     * Check if user has a feature enabled
+     */
+    const hasPermissionFeature = async (featureName: string): Promise<boolean> => {
+        if (!userId) return false;
 
-  return {
-    permissions,
-    loading,
-    error,
-    refreshPermissions,
-    canAccessRoute,
-    getAccessDeniedMessage,
-    
-    // Convenience flags for common checks
-    isAuthenticated: permissions?.isAuthenticated ?? false,
-    isAdmin: permissions?.isAdmin ?? false,
-    isInventoryManager: permissions?.isInventoryManager ?? false,
-    isSeller: permissions?.isSeller ?? false,
-    userGroups: permissions?.userGroups ?? [],
-    roleDescription: permissions ? PermissionManager.getUserRoleDescription(permissions.userGroups) : 'Unknown',
-  };
+        if (permissionContext) {
+            if (permissionContext.features.includes(featureName) || permissionContext.features.includes('*')) {
+                return true;
+            }
+        }
+
+        return await hasFeature(userId, featureName);
+    };
+
+    /**
+     * Get full permission context for user
+     */
+    const getContext = async (): Promise<UserPermissionContext | null> => {
+        if (!userId) return null;
+        return permissionContext || await getUserPermissionContext(userId);
+    };
+
+    /**
+     * Refresh user info - invalidates the cache to force a background refetch
+     */
+    const refresh = async () => {
+        console.log('[usePermissions] Refreshing permissions cache...');
+        await queryClient.invalidateQueries({ queryKey: PERMISSION_KEYS.all });
+    };
+
+    /**
+     * Synchronous route access check using cached permission context
+     */
+    const canAccessRoute = (routeName: string): boolean => {
+        if (!permissionContext) return false;
+        return permissionContext.allowedRoutes.includes(routeName) ||
+            permissionContext.allowedRoutes.includes('*');
+    };
+
+    /**
+     * Get access denied message for a route
+     */
+    const getAccessDeniedMessage = (routeName: string): string => {
+        if (!userRole) {
+            return 'You do not have a role assigned. Please contact an administrator.';
+        }
+        return `Your role (${userRole}) does not have permission to access ${routeName}. Please contact an administrator if you believe this is an error.`;
+    };
+
+    return {
+        loading,
+        error,
+        userId,
+        userRole,
+        canAccess,
+        canRoute,
+        canAccessRoute,
+        getAccessDeniedMessage,
+        hasFeature: hasPermissionFeature,
+        getContext,
+        refresh,
+
+        // Convenience flags
+        isAdmin: userRole === 'admin',
+        isInventoryManager: userRole === 'inventory_manager',
+        isSeller: userRole === 'seller',
+
+        // Properties for welcome.tsx compatibility
+        permissions: permissionContext ? {
+            accessiblePages: permissionContext.allowedRoutes,
+            userGroups: userRole ? [userRole] : [],
+        } : null,
+        userGroups: userRole ? [userRole] : [],
+        roleDescription: userRole,
+        refreshPermissions: refresh,
+    };
 }

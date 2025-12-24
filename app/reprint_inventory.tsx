@@ -3,21 +3,22 @@ import { View, Text, StyleSheet, FlatList, Alert, TouchableOpacity, ScrollView, 
 import { AutocompleteDropdown, AutocompleteDropdownContextProvider } from 'react-native-autocomplete-dropdown';
 import ThemedButton from '../components/ThemedButton';
 import { useRouter } from 'expo-router';
-import appwrite from '../constants/appwrite';
+import appwrite, { DATABASE_ID, INVENTORY_COLLECTION_ID } from '../constants/appwrite';
 import { Databases, Query } from 'react-native-appwrite';
 import { formatTireSize } from '../utils/tireSizeFormatter';
-import { 
-  setupThermalPrinter, 
-  printInventoryLabel, 
-  printThermalQR, 
+import {
+  setupThermalPrinter,
+  printInventoryLabel,
+  printThermalQR,
   printThermalText,
-  type ThermalDevice 
+  type ThermalDevice
 } from '../utils/thermalPrinterService';
 import QRCode from 'react-native-qrcode-svg';
 import i18n from '../constants/i18n';
 import { useLanguage } from '../components/LanguageContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { usePermissions } from '@/hooks/usePermissions';
+import { QR_PREFIXES } from '@/constants/config';
 
 // Type for inventory item
 interface InventoryItem {
@@ -31,8 +32,6 @@ interface InventoryItem {
 }
 
 const LAST_N = 10;
-const DB_ID = '687ca1a800338d2b13ae';
-const COLLECTION_ID = '687ca1ac00054b181ab0';
 
 const ReprintInventoryContent: React.FC = () => {
   const { lang } = useLanguage();
@@ -60,30 +59,30 @@ const ReprintInventoryContent: React.FC = () => {
       console.log('[DEBUG] No custom sequence entered');
       return;
     }
-    
+
     console.log('=== CUSTOM SEQUENCE PRINT DEBUG ===');
     console.log('Custom sequence:', customSequence);
-    
+
     try {
       const databases = new Databases(appwrite);
-      const result = await databases.listDocuments(DB_ID, COLLECTION_ID, [
+      const result = await databases.listDocuments(DATABASE_ID, INVENTORY_COLLECTION_ID, [
         Query.equal('sequence', parseInt(customSequence))
       ]);
-      
+
       console.log('Database query result:', {
         documentsFound: result.documents.length,
         documents: result.documents
       });
-      
+
       if (result.documents.length > 0) {
         const doc = result.documents[0];
         console.log('Found inventory document:', doc);
-        
+
         // Register QR ref for this sequence
         setTimeout(() => {
           if (!qrRefs.current[doc.sequence]) {
             console.log('[DEBUG] QR code ref not ready for custom sequence');
-            Alert.alert('QR code not ready', 'QR code ref not available.');
+            Alert.alert(i18n.t('error', { locale: lang }), i18n.t('qrCodeNotReady', { locale: lang }));
             return;
           }
           console.log('[DEBUG] Calling handlePrint for custom sequence:', doc.sequence);
@@ -98,7 +97,7 @@ const ReprintInventoryContent: React.FC = () => {
         }, 100); // Give QRCode a moment to render
       } else {
         console.log('[DEBUG] No inventory found for sequence:', customSequence);
-        Alert.alert('Not found', `No inventory found for sequence ${customSequence}`);
+        Alert.alert(i18n.t('noDataFound', { locale: lang }), `${i18n.t('noDataFound', { locale: lang })} ${customSequence}`);
       }
     } catch (e) {
       console.error('[DEBUG] Error fetching custom sequence:', e);
@@ -116,7 +115,7 @@ const ReprintInventoryContent: React.FC = () => {
     setError(null);
     try {
       const databases = new Databases(appwrite);
-      const result = await databases.listDocuments(DB_ID, COLLECTION_ID, [
+      const result = await databases.listDocuments(DATABASE_ID, INVENTORY_COLLECTION_ID, [
         Query.orderDesc('sequence'),
         Query.limit(LAST_N)
       ]);
@@ -132,7 +131,7 @@ const ReprintInventoryContent: React.FC = () => {
       })));
     } catch (e: any) {
       console.error('[ReprintInventoryScreen] Failed to fetch inventory:', e);
-      setError('Failed to fetch recent inventory');
+      setError(i18n.t('failedToFetchInventory', { locale: lang }));
     } finally {
       setLoading(false);
     }
@@ -141,21 +140,21 @@ const ReprintInventoryContent: React.FC = () => {
   const initializePrinter = async () => {
     console.log('=== INITIALIZING PRINTER ===');
     setPrinterDebug('Setting up thermal printer...');
-    
+
     const result = await setupThermalPrinter(setPrinterDebug);
-    
+
     console.log('Printer setup result:', {
       success: result.success,
       devicesCount: result.devices.length,
       devices: result.devices
     });
-    
+
     if (result.success) {
       setPrinterDevices(result.devices);
       const message = `Found ${result.devices.length} thermal printer(s)`;
       setPrinterDebug(message);
       console.log('[PRINTER INIT]', message);
-      
+
       // Log each device for debugging
       result.devices.forEach((device, index) => {
         console.log(`[PRINTER INIT] Device ${index + 1}:`, {
@@ -173,9 +172,9 @@ const ReprintInventoryContent: React.FC = () => {
 
   const handlePrint = async (item: InventoryItem) => {
     // Debug print for emulator: print all relevant values for verification
-    const qrValue = `TT1_${item.sequence}`;
+    const qrValue = `${QR_PREFIXES.INVENTORY}${item.sequence}`;
     const qrRef = qrRefs.current[item.sequence];
-    
+
     // Enhanced console logging for emulator testing
     console.log('=== REPRINT INVENTORY LABEL DEBUG ===');
     console.log('Print data:', {
@@ -196,7 +195,7 @@ const ReprintInventoryContent: React.FC = () => {
       printerDevicesCount: printerDevices.length,
       qrRefAvailable: !!qrRef,
     });
-    
+
     // Simulated print output for emulator testing
     console.log('=== SIMULATED PRINT OUTPUT ===');
     console.log('INVENTORY LABEL');
@@ -209,26 +208,26 @@ const ReprintInventoryContent: React.FC = () => {
     console.log('================');
     console.log(`QR Code: ${qrValue}`);
     console.log('=================================');
-    
+
     if (!enablePrint) {
       console.log('[DEBUG] Print disabled - would show alert');
       Alert.alert(i18n.t('printDisabled', { locale: lang }), i18n.t('enablePrintToSendToPrinter', { locale: lang }));
       return;
     }
-    
+
     if (!selectedPrinter) {
       console.log('[DEBUG] No printer selected - printing debug info only');
       console.log('[DEBUG] Print data would be sent to printer if one was selected');
-      Alert.alert('No Printer', 'No printer selected. Check console for debug output.');
+      Alert.alert(i18n.t('noPrinters', { locale: lang }), i18n.t('selectPrinter', { locale: lang }));
       return;
     }
-    
+
     if (!qrRef) {
       console.log('[DEBUG] QR ref not available - would show alert');
-      Alert.alert('QR code not ready', 'QR code ref not available.');
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('qrCodeNotReady', { locale: lang }));
       return;
     }
-    
+
     try {
       // Use the new thermal printer service to print inventory label
       const inventoryData = {
@@ -238,19 +237,19 @@ const ReprintInventoryContent: React.FC = () => {
         unitPrice: item.unit_price?.toLocaleString() || '',
         radiusSize: item.radius_size || ''
       };
-      
+
       console.log('[DEBUG] Calling printInventoryLabel with:', inventoryData);
-      
+
       const success = await printInventoryLabel(
-        selectedPrinter, 
-        inventoryData, 
-        qrRef, 
+        selectedPrinter,
+        inventoryData,
+        qrRef,
         setPrinterDebug
       );
-      
+
       if (success) {
         console.log('[DEBUG] Print successful');
-        Alert.alert('Success', 'Label sent to printer');
+        Alert.alert(i18n.t('success', { locale: lang }), i18n.t('printLabelSent', { locale: lang }));
       } else {
         console.log('[DEBUG] Print failed - no success returned');
       }
@@ -261,7 +260,7 @@ const ReprintInventoryContent: React.FC = () => {
         message: e.message,
         stack: e.stack
       });
-      Alert.alert('Error', 'Failed to print label');
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToPrintLabel', { locale: lang }));
     }
   };
 
@@ -297,7 +296,7 @@ const ReprintInventoryContent: React.FC = () => {
         {customSequence ? (
           <View style={{ position: 'absolute', left: -1000, height: 0, width: 0 }}>
             <QRCode
-              value={`TT1_${customSequence}`}
+              value={`${QR_PREFIXES.INVENTORY}${customSequence}`}
               getRef={ref => { if (ref) qrRefs.current[parseInt(customSequence)] = ref; }}
             />
           </View>
@@ -386,7 +385,7 @@ const ReprintInventoryContent: React.FC = () => {
                 <Text style={styles.itemText}>{item.brand} {formatTireSize(item.size)}</Text>
                 <View style={{ position: 'absolute', left: -1000, height: 0, width: 0 }}>
                   <QRCode
-                    value={`TT1_${item.sequence}`}
+                    value={`${QR_PREFIXES.INVENTORY}${item.sequence}`}
                     getRef={ref => { if (ref) qrRefs.current[item.sequence] = ref; }}
                   />
                 </View>
@@ -398,7 +397,7 @@ const ReprintInventoryContent: React.FC = () => {
               />
             </View>
           )}
-          ListEmptyComponent={<Text style={styles.infoText}>No recent inventory found.</Text>}
+          ListEmptyComponent={<Text style={styles.infoText}>{i18n.t('noRecentInventoryFound', { locale: lang })}</Text>}
         />
       </View>
     </AutocompleteDropdownContextProvider>

@@ -8,13 +8,12 @@ import { useLanguage } from '@/components/LanguageContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// Scanner box dimensions
+// Scanner box dimensions - ensure it's a perfect square
 const SCANNER_BOX_WIDTH = screenWidth * 0.6;
-const SCANNER_BOX_HEIGHT = SCANNER_BOX_WIDTH * 1;
+const SCANNER_BOX_HEIGHT = SCANNER_BOX_WIDTH; // Perfect square (1:1 aspect ratio)
 
-// Calculate overlay heights more precisely
-const OVERLAY_TOP_HEIGHT = Math.floor((screenHeight - SCANNER_BOX_HEIGHT) / 2);
-const OVERLAY_BOTTOM_HEIGHT = screenHeight - SCANNER_BOX_HEIGHT - OVERLAY_TOP_HEIGHT;
+// Calculate overlay heights - use exact calculations to prevent gaps
+const OVERLAY_TOP_HEIGHT = (screenHeight - SCANNER_BOX_HEIGHT) / 2;
 
 const styles = StyleSheet.create({
   container: {
@@ -42,10 +41,10 @@ const styles = StyleSheet.create({
   },
   overlayBottom: {
     position: 'absolute',
-    bottom: 0,
+    top: OVERLAY_TOP_HEIGHT + SCANNER_BOX_HEIGHT,
     left: 0,
     right: 0,
-    height: OVERLAY_BOTTOM_HEIGHT,
+    bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   overlayLeft: {
@@ -185,7 +184,7 @@ export default function QRScannerWithBox({
   const [manualInput, setManualInput] = useState('');
   const [showManual, setShowManual] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
-  
+
   // Animation for scanning line
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
 
@@ -220,13 +219,28 @@ export default function QRScannerWithBox({
 
   const requestCameraPermission = async () => {
     try {
-      console.log('[QR SCANNER] Requesting camera permissions...');
+      console.log('[QR SCANNER] Checking camera permissions...');
+
+      // First, check if we already have permission (instant, no dialog)
+      const currentPermission = await Camera.getCameraPermissionsAsync();
+      console.log('[QR SCANNER] Current permission status:', currentPermission.status);
+
+      if (currentPermission.status === 'granted') {
+        console.log('[QR SCANNER] Camera permission already granted');
+        setHasPermission(true);
+        return;
+      }
+
+      // If not granted, request permission (may show system dialog)
+      console.log('[QR SCANNER] Requesting camera permission...');
       const { status } = await Camera.requestCameraPermissionsAsync();
-      console.log('[QR SCANNER] Camera permission status:', status);
-      
+      console.log('[QR SCANNER] Permission request result:', status);
+
       if (status === 'granted') {
+        console.log('[QR SCANNER] Camera permission granted');
         setHasPermission(true);
       } else {
+        console.log('[QR SCANNER] Camera permission denied:', status);
         setHasPermission(false);
         if (showManualInput) {
           Alert.alert(
@@ -246,7 +260,7 @@ export default function QRScannerWithBox({
         }
       }
     } catch (error) {
-      console.error('[QR SCANNER] Error requesting camera permission:', error);
+      console.error('[QR SCANNER] Error with camera permission:', error);
       setHasPermission(false);
       if (showManualInput) {
         setShowManual(true);
@@ -261,12 +275,12 @@ export default function QRScannerWithBox({
     if (restrictToBox) {
       console.log('[QR SCANNER] Bounds checking enabled');
       console.log('[QR SCANNER] Bounds object:', bounds);
-      
+
       if (bounds && bounds.origin && bounds.size) {
         // Calculate QR code center
         const qrCenterX = bounds.origin.x + bounds.size.width / 2;
         const qrCenterY = bounds.origin.y + bounds.size.height / 2;
-        
+
         // Calculate scanner box bounds with tolerance (20px padding)
         const tolerance = 20;
         const boxLeft = (screenWidth - SCANNER_BOX_WIDTH) / 2 - tolerance;
@@ -279,8 +293,8 @@ export default function QRScannerWithBox({
         console.log(`[QR SCANNER] Screen: ${screenWidth}x${screenHeight}, Box: ${SCANNER_BOX_WIDTH}x${SCANNER_BOX_HEIGHT}`);
 
         // Check if QR code center is within the scanner box (with tolerance)
-        if (qrCenterX >= boxLeft && qrCenterX <= boxRight && 
-            qrCenterY >= boxTop && qrCenterY <= boxBottom) {
+        if (qrCenterX >= boxLeft && qrCenterX <= boxRight &&
+          qrCenterY >= boxTop && qrCenterY <= boxBottom) {
           console.log('[QR SCANNER] QR code detected within scanner box (with tolerance):', data);
           setScanned(true);
           onScanned(data);
@@ -382,7 +396,7 @@ export default function QRScannerWithBox({
           barcodeTypes: ['qr', 'pdf417', 'code128', 'code93', 'code39', 'ean13', 'ean8', 'upc_a', 'upc_e'],
         }}
       />
-      
+
       {/* Dark overlay with cutout for scanner box */}
       <View style={styles.overlay}>
         <View style={styles.overlayTop} />
@@ -390,7 +404,7 @@ export default function QRScannerWithBox({
         <View style={styles.overlayLeft} />
         <View style={styles.overlayRight} />
       </View>
-      
+
       {/* Scanner box with enhanced corners */}
       <View style={styles.scannerBox}>
         {/* Corner decorations */}
@@ -398,7 +412,7 @@ export default function QRScannerWithBox({
         <View style={[styles.scannerCorner, styles.topRight]} />
         <View style={[styles.scannerCorner, styles.bottomLeft]} />
         <View style={[styles.scannerCorner, styles.bottomRight]} />
-        
+
         {/* Animated scanning line */}
         {cameraReady && !scanned && (
           <Animated.View
@@ -463,7 +477,7 @@ export default function QRScannerWithBox({
             color="#666"
           />
         )}
-        
+
         {scanned && (
           <ThemedButton
             title={i18n.t('tapToScanAgain', { locale: lang })}
@@ -471,7 +485,7 @@ export default function QRScannerWithBox({
             color="#1976d2"
           />
         )}
-        
+
         <ThemedButton
           title={i18n.t('cancel', { locale: lang })}
           onPress={onCancel}

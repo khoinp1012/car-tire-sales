@@ -19,23 +19,10 @@ client.set_key(APPWRITE_API_KEY)
 teams = Teams(client)
 databases = Databases(client)
 
-# Team names
-TEAM_ADMIN = "admin"
-TEAM_INVENTORY = "inventory_manager"
-TEAM_SELLER = "seller"
+# Note: Teams are no longer used. The app now uses database-based roles (user_roles collection)
+# Permissions are granted to all authenticated users at the collection level
+# Access control is handled by the application layer (ProtectedRoute, PermissionManager)
 
-# Create teams if not exist
-def ensure_team(name):
-    result = teams.list(search=name)
-    for team in result["teams"]:
-        if team["name"] == name:
-            return team["$id"]
-    team = teams.create(ID.unique(), name)
-    return team["$id"]
-
-admin_team_id = ensure_team(TEAM_ADMIN)
-inventory_team_id = ensure_team(TEAM_INVENTORY)
-seller_team_id = ensure_team(TEAM_SELLER)
 
 # Collection IDs
 COL_TIRE_MODELS = "687ca1a900218b17ed05"
@@ -45,26 +32,19 @@ COL_SALES_ORDERS = "687ca1b5000adbbf16bd"
 
 # Set permissions for each collection
 def set_permissions():
-    # Admin: full CRUD
-    admin_perms = [
-        Permission.read(Role.team(admin_team_id)),
-        Permission.create(Role.team(admin_team_id)),
-        Permission.update(Role.team(admin_team_id)),
-        Permission.delete(Role.team(admin_team_id)),
+    # Since we now use database-based roles instead of Appwrite Teams,
+    # we grant permissions to all authenticated users at the collection level.
+    # Access control is handled by the application layer (ProtectedRoute, PermissionManager)
+    
+    # All authenticated users get full CRUD access
+    # The app's permission system controls what users can actually do
+    authenticated_perms = [
+        Permission.read(Role.users()),
+        Permission.create(Role.users()),
+        Permission.update(Role.users()),
+        Permission.delete(Role.users()),
     ]
-    # Inventory Manager
-    inventory_perms = [
-        Permission.read(Role.team(inventory_team_id)),
-        Permission.create(Role.team(inventory_team_id)),
-        Permission.update(Role.team(inventory_team_id)),
-        Permission.delete(Role.team(inventory_team_id)),
-    ]
-    # Seller
-    seller_perms = [
-        Permission.read(Role.team(seller_team_id)),
-        Permission.create(Role.team(seller_team_id)),
-        Permission.update(Role.team(seller_team_id)),
-    ]
+    
     # Helper to update collection with all required fields
     def update_collection_with_all_fields(col_id, name, permissions):
         col = databases.get_collection(DB_ID, col_id)
@@ -72,18 +52,12 @@ def set_permissions():
         # Force document_security to False for collection-level permissions
         databases.update_collection(DB_ID, col_id, name=name, permissions=permissions, document_security=False, enabled=enabled)
 
-    # tire_models: admin CRUD, inventory manager read, seller read
-    update_collection_with_all_fields(COL_TIRE_MODELS, "tire_models",
-        admin_perms + [Permission.read(Role.team(inventory_team_id)), Permission.read(Role.team(seller_team_id))])
-    # inventory_items: admin CRUD, inventory manager CRUD, seller read
-    update_collection_with_all_fields(COL_INVENTORY_ITEMS, "inventory_items",
-        admin_perms + inventory_perms + [Permission.read(Role.team(seller_team_id))])
-    # customers: admin CRUD, inventory manager read, seller read/update
-    update_collection_with_all_fields(COL_CUSTOMERS, "customers",
-        admin_perms + [Permission.read(Role.team(inventory_team_id))] + seller_perms)
-    # sales_orders: admin CRUD, inventory manager read, seller create/read
-    update_collection_with_all_fields(COL_SALES_ORDERS, "sales_orders",
-        admin_perms + [Permission.read(Role.team(inventory_team_id))] + [Permission.create(Role.team(seller_team_id)), Permission.read(Role.team(seller_team_id))])
+    # All collections: authenticated users get full CRUD
+    # Application-level permissions (ProtectedRoute + PermissionManager) control actual access
+    update_collection_with_all_fields(COL_TIRE_MODELS, "tire_models", authenticated_perms)
+    update_collection_with_all_fields(COL_INVENTORY_ITEMS, "inventory_items", authenticated_perms)
+    update_collection_with_all_fields(COL_CUSTOMERS, "customers", authenticated_perms)
+    update_collection_with_all_fields(COL_SALES_ORDERS, "sales_orders", authenticated_perms)
 
 if __name__ == "__main__":
     set_permissions()

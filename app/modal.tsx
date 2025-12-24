@@ -3,11 +3,14 @@ import { Platform, StyleSheet } from 'react-native';
 
 import EditScreenInfo from '@/components/EditScreenInfo';
 import { Text, View } from '@/components/Themed';
+import i18n from '@/constants/i18n';
+import { useLanguage } from '@/components/LanguageContext';
 
 export default function ModalScreen() {
+  const { lang } = useLanguage();
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Modal</Text>
+      <Text style={styles.title}>{i18n.t('modal', { locale: lang })}</Text>
       <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
       <EditScreenInfo path="app/modal.tsx" />
 

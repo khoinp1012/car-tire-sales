@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { AutocompleteDropdown, AutocompleteDropdownContextProvider } from 'react-native-autocomplete-dropdown';
 import { Databases, Query, ID, Permission, Role } from 'react-native-appwrite';
-import appwrite from '@/constants/appwrite';
+import appwrite, { DATABASE_ID, INVENTORY_COLLECTION_ID, CUSTOMERS_COLLECTION_ID, SALES_COLLECTION_ID } from '@/constants/appwrite';
 import ThemedButton from '@/components/ThemedButton';
 import SuccessPopup from '@/components/SuccessPopup';
 import { useRouter } from 'expo-router';
@@ -111,7 +111,7 @@ function CreateSalesContent() {
       await Promise.all([loadPendingItems(), loadCustomers()]);
     } catch (error) {
       console.error('Error loading data:', error);
-      Alert.alert('Error', 'Failed to load data');
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToLoadData', { locale: lang }));
     } finally {
       setLoading(false);
     }
@@ -120,10 +120,8 @@ function CreateSalesContent() {
   const loadPendingItems = async () => {
     try {
       const databases = new Databases(appwrite);
-      const DB_ID = '687ca1a800338d2b13ae';
-      const INVENTORY_COLLECTION_ID = '687ca1ac00054b181ab0';
 
-      const result = await databases.listDocuments(DB_ID, INVENTORY_COLLECTION_ID, [
+      const result = await databases.listDocuments(DATABASE_ID, INVENTORY_COLLECTION_ID, [
         Query.equal('pending_sale', 1),
         Query.equal('sold', false),
         Query.orderAsc('sequence')
@@ -139,10 +137,8 @@ function CreateSalesContent() {
   const loadCustomers = async () => {
     try {
       const databases = new Databases(appwrite);
-      const DB_ID = '687ca1a800338d2b13ae';
-      const CUSTOMERS_COLLECTION_ID = '687ca1b00024526eedc2';
 
-      const result = await databases.listDocuments(DB_ID, CUSTOMERS_COLLECTION_ID, [
+      const result = await databases.listDocuments(DATABASE_ID, CUSTOMERS_COLLECTION_ID, [
         Query.orderAsc('name')
       ]);
 
@@ -177,7 +173,7 @@ function CreateSalesContent() {
       i18n.t('cancelSaleConfirm', { locale: lang }),
       [
         { text: i18n.t('cancel', { locale: lang }), style: 'cancel' },
-        { text: 'Confirm', onPress: confirmCancelSale }
+        { text: i18n.t('confirm', { locale: lang }), onPress: confirmCancelSale }
       ]
     );
   };
@@ -186,18 +182,16 @@ function CreateSalesContent() {
     try {
       setSubmitting(true);
       const databases = new Databases(appwrite);
-      const DB_ID = '687ca1a800338d2b13ae';
-      const INVENTORY_COLLECTION_ID = '687ca1ac00054b181ab0';
 
       // Update all pending items: set pending_sale back to null
       const updatePromises = pendingItems.map(item =>
-        databases.updateDocument(DB_ID, INVENTORY_COLLECTION_ID, item.$id, {
+        databases.updateDocument(DATABASE_ID, INVENTORY_COLLECTION_ID, item.$id, {
           pending_sale: null,
         })
       );
 
       await Promise.all(updatePromises);
-      
+
       Alert.alert(
         i18n.t('success', { locale: lang }),
         i18n.t('saleCancelled', { locale: lang }),
@@ -213,18 +207,18 @@ function CreateSalesContent() {
 
   const handleCreateSale = async () => {
     if (!selectedCustomer) {
-      Alert.alert('Error', i18n.t('pleaseSelectCustomer', { locale: lang }));
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('pleaseSelectCustomer', { locale: lang }));
       return;
     }
 
     if (pendingItems.length === 0) {
-      Alert.alert('Error', i18n.t('noPendingItems', { locale: lang }));
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('noPendingItems', { locale: lang }));
       return;
     }
 
     const finalTotal = selectedCustomer?.data.discount_percent > 0 ? calculateFinalTotal() : calculateTotal();
-    const discountText = selectedCustomer?.data.discount_percent > 0 
-      ? ` (${i18n.t('total', { locale: lang })}: ${formatVNCurrency(finalTotal)} VND ${i18n.t('after', { locale: lang })} ${selectedCustomer.data.discount_percent}% ${i18n.t('discount', { locale: lang })})` 
+    const discountText = selectedCustomer?.data.discount_percent > 0
+      ? ` (${i18n.t('total', { locale: lang })}: ${formatVNCurrency(finalTotal)} VND ${i18n.t('after', { locale: lang })} ${selectedCustomer.data.discount_percent}% ${i18n.t('discount', { locale: lang })})`
       : ` (${i18n.t('total', { locale: lang })}: ${formatVNCurrency(finalTotal)} VND)`;
 
     Alert.alert(
@@ -241,9 +235,6 @@ function CreateSalesContent() {
     try {
       setSubmitting(true);
       const databases = new Databases(appwrite);
-      const DB_ID = '687ca1a800338d2b13ae';
-      const INVENTORY_COLLECTION_ID = '687ca1ac00054b181ab0';
-      const SALES_COLLECTION_ID = '687ca1b5000adbbf16bd';
 
       // Create line items data - complete historical snapshot as JSON string
       const lineItems = pendingItems.map(item => ({
@@ -278,7 +269,7 @@ function CreateSalesContent() {
       console.log('Creating sales order with data:', salesOrder);
 
       const saleResult = await databases.createDocument(
-        DB_ID,
+        DATABASE_ID,
         SALES_COLLECTION_ID,
         ID.unique(),
         salesOrder,
@@ -291,7 +282,7 @@ function CreateSalesContent() {
 
       // Update inventory items: set sold=true, pending_sale=0
       const updatePromises = pendingItems.map(item =>
-        databases.updateDocument(DB_ID, INVENTORY_COLLECTION_ID, item.$id, {
+        databases.updateDocument(DATABASE_ID, INVENTORY_COLLECTION_ID, item.$id, {
           sold: true,
           pending_sale: 0
         })
@@ -344,7 +335,7 @@ function CreateSalesContent() {
             <View style={styles.buttonFlex}>
               <ThemedButton
                 title={submitting ? i18n.t('creatingSale', { locale: lang }) : i18n.t('createSalesOrder', { locale: lang })}
-                onPress={submitting || pendingItems.length === 0 || !selectedCustomer ? () => {} : handleCreateSale}
+                onPress={submitting || pendingItems.length === 0 || !selectedCustomer ? () => { } : handleCreateSale}
                 color={submitting || pendingItems.length === 0 || !selectedCustomer ? '#ccc' : '#1976d2'}
               />
             </View>
@@ -442,15 +433,15 @@ function CreateSalesContent() {
         />
 
         {submitting && (
-          <View style={{ 
-            position: 'absolute', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            backgroundColor: 'rgba(0,0,0,0.3)', 
-            justifyContent: 'center', 
-            alignItems: 'center' 
+          <View style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            justifyContent: 'center',
+            alignItems: 'center'
           }}>
             <ActivityIndicator size="large" color="#1976d2" />
             <Text style={{ color: 'white', marginTop: 8 }}>{i18n.t('creatingSale', { locale: lang })}</Text>

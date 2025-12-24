@@ -17,7 +17,7 @@ export const formatVNDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleDateString('vi-VN', {
     year: 'numeric',
-    month: '2-digit', 
+    month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
@@ -36,7 +36,7 @@ export const generateInvoiceNumber = (orderId: string): string => {
  */
 export const sanitizeFilename = (filename: string): string => {
   return filename
-    .replace(/[^a-zA-Z0-9\u00C0-\u017F\s._-]/g, '') // Keep Vietnamese characters
+    .replace(/[^a-zA-Z0-9\u00C0-\u017F\u1E00-\u1EFF\s._-]/g, '') // Keep Vietnamese characters (including Extended Latin)
     .replace(/\s+/g, '_') // Replace spaces with underscores
     .substring(0, 100); // Limit length
 };

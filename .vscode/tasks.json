@@ -106,6 +106,21 @@
 			"group": "build",
 			"isBackground": true,
 			"problemMatcher": []
+		},
+		{
+			"type": "shell",
+			"label": "LOCAL: Clean Cache and Run Android",
+			"command": "npx expo run:android --no-build-cache",
+			"args": [],
+			"options": {
+				"env": {
+					"ANDROID_HOME": "/home/khoi/Android/Sdk",
+					"ANDROID_SDK_ROOT": "/home/khoi/Android/Sdk"
+				}
+			},
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
 		}
 	]
 }

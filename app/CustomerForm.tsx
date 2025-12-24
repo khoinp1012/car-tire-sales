@@ -4,7 +4,7 @@ import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
 import SuccessPopup from '@/components/SuccessPopup';
 import ThemedButton from '@/components/ThemedButton';
-import appwrite from '@/constants/appwrite';
+import appwrite, { DATABASE_ID, CUSTOMERS_COLLECTION_ID } from '@/constants/appwrite';
 import { Databases, ID, Permission, Role, Query } from 'react-native-appwrite';
 import { useRouter } from 'expo-router';
 
@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 export default function CustomerForm({ mode = 'insert', customerData, documentId, onSuccess }: any) {
   const router = useRouter();
   const { lang } = useLanguage();
-  
+
   // Form state based on customer schema
   const [name, setName] = useState(mode === 'modify' && customerData?.name ? customerData.name : '');
   const [phoneNumber, setPhoneNumber] = useState(mode === 'modify' && customerData?.phone_number ? customerData.phone_number : '');
@@ -21,7 +21,7 @@ export default function CustomerForm({ mode = 'insert', customerData, documentId
   const [discountPercent, setDiscountPercent] = useState(mode === 'modify' && customerData?.discount_percent ? String(customerData.discount_percent) : '0');
   const [reference, setReference] = useState(mode === 'modify' && customerData?.reference ? String(customerData.reference) : '');
   const [fullDescription, setFullDescription] = useState(mode === 'modify' && customerData?.full_description ? customerData.full_description : '');
-  
+
   // UI state
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -47,8 +47,6 @@ export default function CustomerForm({ mode = 'insert', customerData, documentId
     setLoading(true);
     try {
       const databases = new Databases(appwrite);
-      const DB_ID = '687ca1a800338d2b13ae'; // CarTireSales database
-      const COLLECTION_ID = '687ca1b00024526eedc2'; // customers collection
 
       // Generate full description
       const description = `${name} - ${phoneNumber}${address ? ` - ${address}` : ''}`;
@@ -67,13 +65,13 @@ export default function CustomerForm({ mode = 'insert', customerData, documentId
       let result;
       if (mode === 'modify' && documentId) {
         // Update existing customer
-        result = await databases.updateDocument(DB_ID, COLLECTION_ID, documentId, customerPayload);
+        result = await databases.updateDocument(DATABASE_ID, CUSTOMERS_COLLECTION_ID, documentId, customerPayload);
         console.log('Customer updated successfully:', result);
       } else {
         // Insert new customer
         result = await databases.createDocument(
-          DB_ID,
-          COLLECTION_ID,
+          DATABASE_ID,
+          CUSTOMERS_COLLECTION_ID,
           ID.unique(),
           customerPayload,
           [
@@ -110,7 +108,7 @@ export default function CustomerForm({ mode = 'insert', customerData, documentId
 
     } catch (error) {
       console.error('Error saving customer:', error);
-      Alert.alert('Error', `Failed to ${mode} customer. Please try again.`);
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToModifyCustomer', { locale: lang, mode }));
     } finally {
       setLoading(false);
     }
@@ -246,19 +244,19 @@ export default function CustomerForm({ mode = 'insert', customerData, documentId
       />
 
       {loading && (
-        <View style={{ 
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0, 
-          backgroundColor: 'rgba(0,0,0,0.3)', 
-          justifyContent: 'center', 
-          alignItems: 'center' 
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.3)',
+          justifyContent: 'center',
+          alignItems: 'center'
         }}>
           <ActivityIndicator size="large" color="#1976d2" />
           <Text style={{ color: 'white', marginTop: 8 }}>
-            {mode === 'modify' ? 'Updating...' : 'Adding...'}
+            {mode === 'modify' ? i18n.t('updating', { locale: lang }) : i18n.t('adding', { locale: lang })}
           </Text>
         </View>
       )}

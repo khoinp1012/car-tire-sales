@@ -1,0 +1,25 @@
+{
+    "projectId": "687b358f00367ce271e0",
+    "projectName": "my-new-project",
+    "functions": [
+        {
+            "$id": "google-native-signin",
+            "name": "google-native-signin",
+            "runtime": "node-18.0",
+            "path": "functions/google-native-signin",
+            "entrypoint": "index.js",
+            "execute": [
+                "any"
+            ],
+            "events": [],
+            "schedule": "",
+            "timeout": 15,
+            "enabled": true,
+            "logging": true,
+            "scopes": [
+                "users.read",
+                "users.write"
+            ]
+        }
+    ]
+}

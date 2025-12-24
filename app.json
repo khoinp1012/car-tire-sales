@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tt",
+      "bundleIdentifier": "com.toanthang.tiresales",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to scan QR codes for inventory management."
       }
@@ -30,7 +30,8 @@
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.tt",
+      "package": "com.toanthang.tiresales",
+      "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "permissions": [
         "CAMERA",
@@ -54,6 +55,7 @@
     },
     "plugins": [
       "expo-router",
+      "@react-native-google-signin/google-signin",
       [
         "expo-camera",
         {

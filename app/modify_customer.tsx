@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Databases, Query } from 'react-native-appwrite';
-import appwrite from '@/constants/appwrite';
+import appwrite, { DATABASE_ID, CUSTOMERS_COLLECTION_ID } from '@/constants/appwrite';
 import CustomerForm from './CustomerForm';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import i18n from '@/constants/i18n';
+import { useLanguage } from '@/components/LanguageContext';
+import { QR_PREFIXES } from '@/constants/config';
 
 // This page is for modifying an existing customer.
 // It expects to receive a customer reference or document ID via navigation params.
@@ -14,8 +17,9 @@ function ModifyCustomerContent(props: any) {
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { lang } = useLanguage();
   const params = useLocalSearchParams();
-  
+
   // Get customer reference from navigation params
   const customerRef = params.customerRef as string || params.scanned as string;
 
@@ -23,7 +27,7 @@ function ModifyCustomerContent(props: any) {
     if (customerRef) {
       fetchCustomerData(customerRef);
     } else {
-      setError('No customer reference provided');
+      setError(i18n.t('noCustomerReferenceProvided', { locale: lang }));
       setLoading(false);
     }
   }, [customerRef]);
@@ -32,30 +36,28 @@ function ModifyCustomerContent(props: any) {
     try {
       setLoading(true);
       const databases = new Databases(appwrite);
-      const DB_ID = '687ca1a800338d2b13ae';
-      const COLLECTION_ID = '687ca1b00024526eedc2';
 
       // Try different approaches to find the customer
       let result;
-      
-      // First, try to extract reference number (remove "CUST_" prefix if exists)
-      const referenceValue = refValue.replace('CUST_', '');
-      
+
+      // First, try to extract reference number (remove QR prefix if exists)
+      const referenceValue = refValue.replace(QR_PREFIXES.CUSTOMER, '');
+
       // Try to parse as reference number (integer)
       const referenceNumber = parseInt(referenceValue);
       if (!isNaN(referenceNumber)) {
         // Query customer by reference number
         result = await databases.listDocuments(
-          DB_ID,
-          COLLECTION_ID,
+          DATABASE_ID,
+          CUSTOMERS_COLLECTION_ID,
           [Query.equal('reference', referenceNumber)]
         );
       }
-      
+
       // If no result and looks like a document ID, try querying by document ID
       if (!result || result.documents.length === 0) {
         try {
-          const document = await databases.getDocument(DB_ID, COLLECTION_ID, refValue);
+          const document = await databases.getDocument(DATABASE_ID, CUSTOMERS_COLLECTION_ID, refValue);
           result = { documents: [document] };
         } catch (e) {
           // Document ID approach failed, keep the original result
@@ -68,11 +70,11 @@ function ModifyCustomerContent(props: any) {
         setDocumentId(document.$id);
         setError(null);
       } else {
-        setError(`No customer found with reference/ID: ${refValue}`);
+        setError(i18n.t('noCustomerFound', { locale: lang, reference: refValue }));
       }
     } catch (e) {
       console.error('Error fetching customer data:', e);
-      setError('Failed to fetch customer data');
+      setError(i18n.t('failedToFetchCustomer', { locale: lang }));
     } finally {
       setLoading(false);
     }
@@ -81,7 +83,7 @@ function ModifyCustomerContent(props: any) {
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Loading customer data...</Text>
+        <Text>{i18n.t('loadingCustomerData', { locale: lang })}</Text>
       </View>
     );
   }
@@ -93,7 +95,7 @@ function ModifyCustomerContent(props: any) {
           {error}
         </Text>
         <Text style={{ fontSize: 16, textAlign: 'center' }}>
-          Customer Reference: {customerRef}
+          {i18n.t('customerReference', { locale: lang })}: {customerRef}
         </Text>
       </View>
     );
@@ -102,17 +104,17 @@ function ModifyCustomerContent(props: any) {
   if (!customerData || !documentId) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>No customer data available</Text>
+        <Text>{i18n.t('noCustomerData', { locale: lang })}</Text>
       </View>
     );
   }
 
   return (
-    <CustomerForm 
-      mode="modify" 
-      customerData={customerData} 
-      documentId={documentId} 
-      {...props} 
+    <CustomerForm
+      mode="modify"
+      customerData={customerData}
+      documentId={documentId}
+      {...props}
     />
   );
 }

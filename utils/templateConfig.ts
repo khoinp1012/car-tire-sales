@@ -1,5 +1,6 @@
 // Template switching utility for easy testing and customization
 import { TemplateType } from './templateUtils';
+import { TEMPLATE_CONFIG as APP_TEMPLATE_CONFIG } from '@/constants/config';
 
 /**
  * Configuration for which template to use
@@ -9,7 +10,7 @@ export const TEMPLATE_CONFIG: {
   defaultTemplate: TemplateType;
   availableTemplates: { type: TemplateType; name: string; description: string }[];
 } = {
-  defaultTemplate: 'default', // Change this to switch default template
+  defaultTemplate: APP_TEMPLATE_CONFIG.DEFAULT_TYPE, // Change this to switch default template
   availableTemplates: [
     {
       type: 'default',

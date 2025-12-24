@@ -5,17 +5,18 @@ import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
 import SuccessPopup from '@/components/SuccessPopup';
 import ThemedButton from '@/components/ThemedButton';
-import appwrite, { account } from '@/constants/appwrite';
+import appwrite, { account, DATABASE_ID, INVENTORY_COLLECTION_ID } from '@/constants/appwrite';
 import { Databases, ID, Permission, Role, Query } from 'react-native-appwrite';
 import { getAutofillValues } from '@/utils/autofill';
 import { formatTireSize, compactTireSize } from '@/utils/tireSizeFormatter';
-import { 
-  setupThermalPrinter, 
-  printInventoryLabel, 
-  printThermalQR, 
+import { QR_PREFIXES } from '@/constants/config';
+import {
+  setupThermalPrinter,
+  printInventoryLabel,
+  printThermalQR,
   printThermalText,
   printTestLabel,
-  type ThermalDevice 
+  type ThermalDevice
 } from '@/utils/thermalPrinterService';
 import QRCode from 'react-native-qrcode-svg';
 
@@ -78,10 +79,11 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
     const result = await setupThermalPrinter(setPrinterDebug);
     if (result.success) {
       setPrinterDevices(result.devices);
-      setPrinterDebug(`Found ${result.devices.length} thermal printer(s)`);
+      setPrinterDebug(i18n.t('setupCompleteFoundDevices', { locale: lang, count: result.devices.length }));
     } else {
-      setPrinterDebug('Failed to setup thermal printer');
+      setPrinterDebug(i18n.t('setupFailed', { locale: lang }));
     }
+    setLoading(false);
   };
 
   // Format unit price with thousand separators for display
@@ -96,18 +98,18 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
   // Custom filter functions
   const customFilter = (options: string[], inputText: string, isPrice: boolean = false, isTireSize: boolean = false) => {
     if (!inputText) {
-      return options.map(opt => ({ 
-        id: opt, 
-        title: isPrice ? formatUnitPrice(opt) : isTireSize ? formatTireSize(opt) : opt 
+      return options.map(opt => ({
+        id: opt,
+        title: isPrice ? formatUnitPrice(opt) : isTireSize ? formatTireSize(opt) : opt
       }));
     }
     const searchText = inputText.toLowerCase().trim();
     const filtered = options.filter(opt => {
       const displayValue = isTireSize ? formatTireSize(opt) : opt;
       return displayValue.toLowerCase().includes(searchText) || opt.toLowerCase().includes(searchText);
-    }).map(opt => ({ 
-      id: opt, 
-      title: isPrice ? formatUnitPrice(opt) : isTireSize ? formatTireSize(opt) : opt 
+    }).map(opt => ({
+      id: opt,
+      title: isPrice ? formatUnitPrice(opt) : isTireSize ? formatTireSize(opt) : opt
     }));
     const exactMatch = options.find(opt => opt.toLowerCase() === searchText);
     if (!exactMatch && inputText.trim()) {
@@ -132,35 +134,35 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
         setRadiusSize(formattedMatch[1]);
         return;
       }
-      
+
       // If compact size like "2557016", extract last 2 characters
       const cleanSize = size.replace(/[^0-9]/g, '');
       if (cleanSize.length === 7) {
         setRadiusSize(cleanSize.slice(-2));
         return;
       }
-      
+
       // If 6-digit format like "185651", extract last character and prepend "1"
       if (cleanSize.length === 6) {
         setRadiusSize('1' + cleanSize.slice(-1));
         return;
       }
     }
-    
+
     setRadiusSize('');
   }, [size]);
 
   // Print logic - updated to use new thermal printer service
   const handlePrintTest = async () => {
     if (!selectedPrinter) {
-      Alert.alert('Print Test', 'Please select a thermal printer first');
+      Alert.alert(i18n.t('printTest', { locale: lang }), i18n.t('pleaseSelectThermalPrinter', { locale: lang }));
       return;
     }
-    
+
     // Use the new printTestLabel function
     const success = await printTestLabel(selectedPrinter, setPrinterDebug);
     if (success) {
-      Alert.alert('Print Test', 'Test label sent to printer successfully');
+      Alert.alert(i18n.t('printTest', { locale: lang }), i18n.t('testLabelSent', { locale: lang }));
     }
   };
 
@@ -168,10 +170,10 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
     if (!enablePrint) return;
     if (!selectedPrinter) return;
     if (!qrRef.current) {
-      Alert.alert('QR code ref not available');
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('qrCodeNotReady', { locale: lang }));
       return;
     }
-    
+
     // Use the new printInventoryLabel function
     const inventoryData = {
       sequence,
@@ -180,16 +182,16 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
       unitPrice: unitPrice ? Number(unitPrice).toLocaleString() : '',
       radiusSize
     };
-    
+
     const success = await printInventoryLabel(
-      selectedPrinter, 
-      inventoryData, 
-      qrRef.current, 
+      selectedPrinter,
+      inventoryData,
+      qrRef.current,
       setPrinterDebug
     );
-    
+
     if (success) {
-      setPrinterDebug('Inventory label printed successfully');
+      setPrinterDebug(i18n.t('inventoryLabelPrinted', { locale: lang }));
     }
   };
 
@@ -197,14 +199,12 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
   const handleSubmit = async () => {
     setLoading(true);
     const databases = new Databases(appwrite);
-    const DB_ID = '687ca1a800338d2b13ae';
-    const COLLECTION_ID = '687ca1ac00054b181ab0';
     try {
       let doc, sequence;
       if (mode === 'insert') {
         doc = await databases.createDocument(
-          DB_ID,
-          COLLECTION_ID,
+          DATABASE_ID,
+          INVENTORY_COLLECTION_ID,
           ID.unique(),
           {
             full_description: `Brand: ${brand}, Size: ${size}, Price: ${unitPrice}, Radius: ${radiusSize}`,
@@ -218,12 +218,12 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
         );
         if (doc.$sequence !== undefined) {
           sequence = parseInt(doc.$sequence, 10);
-          await databases.updateDocument(DB_ID, COLLECTION_ID, doc.$id, { sequence });
+          await databases.updateDocument(DATABASE_ID, INVENTORY_COLLECTION_ID, doc.$id, { sequence });
         }
       } else if (mode === 'modify' && documentId) {
         doc = await databases.updateDocument(
-          DB_ID,
-          COLLECTION_ID,
+          DATABASE_ID,
+          INVENTORY_COLLECTION_ID,
           documentId,
           {
             full_description: `Brand: ${brand}, Size: ${size}, Price: ${unitPrice}, Radius: ${radiusSize}`,
@@ -252,7 +252,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
         setDropdownResetKey(k => k + 1);
       }
     } catch (e) {
-      Alert.alert('Error', 'An error occurred while saving inventory.');
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('errorSavingInventory', { locale: lang }));
     }
     setLoading(false);
   };
@@ -272,9 +272,9 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
   return (
     <AutocompleteDropdownContextProvider>
       <ScrollView contentContainerStyle={styles.container} style={{ zIndex: 1 }}>
-        <SuccessPopup 
-          visible={showSuccess} 
-          message={mode === 'modify' ? 'Updated successfully!' : 'Inserted successfully!'} 
+        <SuccessPopup
+          visible={showSuccess}
+          message={mode === 'modify' ? i18n.t('updatedSuccessfully', { locale: lang }) : i18n.t('insertedSuccessfully', { locale: lang })}
         />
         <Text style={styles.label}>{i18n.t('brand') || 'Brand'}</Text>
         <View style={{ marginBottom: 8, zIndex: 20 }}>
@@ -311,7 +311,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
               setBrandForceKey(prev => prev + 1);
             }}
             textInputProps={{
-              placeholder: 'Enter or select a brand',
+              placeholder: i18n.t('enterOrSelectBrand', { locale: lang }),
               onBlur: () => {
                 setBrand(brandInputTextRef.current);
                 setBrandInitialValue(brandInputTextRef.current ? { id: brandInputTextRef.current, title: brandInputTextRef.current } : undefined);
@@ -358,7 +358,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
               setSizeForceKey(prev => prev + 1);
             }}
             textInputProps={{
-              placeholder: 'Enter or select a size (e.g., 255/70R16)',
+              placeholder: i18n.t('enterOrSelectSize', { locale: lang }),
               onBlur: () => {
                 const compactSize = compactTireSize(sizeInputTextRef.current) || sizeInputTextRef.current;
                 setSize(compactSize);
@@ -404,7 +404,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
               setPriceForceKey(prev => prev + 1);
             }}
             textInputProps={{
-              placeholder: 'Enter or select a unit price',
+              placeholder: i18n.t('enterOrSelectUnitPrice', { locale: lang }),
               onBlur: () => {
                 setUnitPrice(priceInputTextRef.current);
                 setPriceInitialValue(priceInputTextRef.current ? { id: priceInputTextRef.current, title: formatUnitPrice(priceInputTextRef.current) } : undefined);
@@ -460,7 +460,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
           style={{ marginTop: 24 }}
         />
         {/* Enable Print Checkbox */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={{ flexDirection: 'row', alignItems: 'center', marginTop: 24, paddingVertical: 8 }}
           onPress={() => setEnablePrint(!enablePrint)}
         >
@@ -479,7 +479,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
               <Text style={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}>✓</Text>
             )}
           </View>
-          <Text style={{ fontSize: 16, fontWeight: '500' }}>Enable Print</Text>
+          <Text style={{ fontSize: 16, fontWeight: '500' }}>{i18n.t('enablePrint', { locale: lang })}</Text>
         </TouchableOpacity>
         {/* Printer Section */}
         {enablePrint && (
@@ -494,8 +494,8 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
                 editable={false}
                 caseSensitive={false}
                 dataSet={printerDropdownOptions}
-                initialValue={selectedPrinter ? { 
-                  id: JSON.stringify(selectedPrinter), 
+                initialValue={selectedPrinter ? {
+                  id: JSON.stringify(selectedPrinter),
                   title: selectedPrinter.device_name || selectedPrinter.name || selectedPrinter.inner_mac_address || 'Selected Device'
                 } : undefined}
                 clearOnFocus={false}
@@ -536,11 +536,11 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
         {/* Hidden QR code for base64 generation */}
         <View style={{ position: 'absolute', left: -1000 }}>
           <QRCode
-            value={lastInsertedSequence ? `TT1_${lastInsertedSequence}` : 'TT1_0'}
+            value={lastInsertedSequence ? `${QR_PREFIXES.INVENTORY}${lastInsertedSequence}` : `${QR_PREFIXES.INVENTORY}0`}
             getRef={ref => (qrRef.current = ref)}
           />
           <QRCode
-            value="TT1_1"
+            value={`${QR_PREFIXES.INVENTORY}1`}
             getRef={ref => (testQrRef.current = ref)}
           />
         </View>

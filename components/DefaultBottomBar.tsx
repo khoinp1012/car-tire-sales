@@ -6,17 +6,17 @@ import { useLanguage } from './LanguageContext';
 
 export default function DefaultBottomBar({ onLogout, groups }: { onLogout?: () => void, groups?: string[] }) {
   const { lang } = useLanguage();
-  
+
   return (
     <View style={styles.bar}>
       <View style={styles.leftSection}>
         <LanguageSwitcherBox />
       </View>
-      
+
       <View style={styles.centerSection}>
         <Button title={i18n.t('logout', { locale: lang })} onPress={onLogout} color="#d32f2f" />
       </View>
-      
+
       {groups && groups.length > 0 && (
         <View style={styles.rightSection}>
           <Text style={styles.groupsText} numberOfLines={1} ellipsizeMode="tail">
@@ -47,19 +47,28 @@ const styles = StyleSheet.create({
   leftSection: {
     flex: 1,
     alignItems: 'flex-start',
-    maxWidth: 120,
+    justifyContent: 'center',
   },
   centerSection: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   rightSection: {
     flex: 1,
     alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   groupsText: {
     fontSize: 12,
-    color: '#1976d2',
+    color: '#666',
     fontWeight: '500',
-    maxWidth: 120,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    backgroundColor: '#f5f5f5',
+    overflow: 'hidden',
   },
 });
