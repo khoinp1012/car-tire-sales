@@ -55,5 +55,10 @@ Lightweight point-of-sale mobile app for car tire shops built with Expo and Appw
 ## Contributing
 - Please open issues or pull requests. Add tests for new functionality.
 
+## Screenshot / Demo
+Below is a demo screenshot captured from the emulator:
+
+![App demo screenshot](assets/images/emulator_screenshot.png)
+
 ## License
 MIT License — see [LICENSE](LICENSE) for details.
