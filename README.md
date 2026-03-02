@@ -64,4 +64,4 @@ Below is a demo screenshot captured from the emulator. No rebuild required — t
 If you prefer a short GIF instead, add it to `assets/` and replace the image link above.
 
 ## License
-License file not yet added. If you want MIT, Apache-2.0, or another license, tell me and I'll add it.
+MIT License — see [LICENSE](LICENSE) for details.
