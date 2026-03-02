@@ -49,7 +49,11 @@ npm test
 - Please open issues or pull requests. Add tests for new functionality.
 
 ## Screenshot / Demo
-Add a short GIF or screenshot to `assets/` and update this README to show it.
+Below is a demo screenshot captured from the emulator. No rebuild required — this image is already included in the repository at `assets/emulator_screenshot.png`.
+
+![App demo screenshot](assets/emulator_screenshot.png)
+
+If you prefer a short GIF instead, add it to `assets/` and replace the image link above.
 
 ## License
 License file not yet added. If you want MIT, Apache-2.0, or another license, tell me and I'll add it.
