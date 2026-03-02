@@ -37,9 +37,20 @@ yarn-error.*
 .env.production
 .env.test
 .env*.local
+.env.appwrite
 
 # Keep the example file for documentation
 !.env.example
+
+# Google or platform config files
+google-services.json
+android/app/google-services.json
+ios/GoogleService-Info.plist
+
+# Android build artifacts and keystores
+android/app/build/
+android/build/
+*.keystore
 
 # typescript
 *.tsbuildinfo
