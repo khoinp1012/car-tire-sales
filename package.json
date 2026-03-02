@@ -9,6 +9,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "test": "jest --watchAll",
+    "test:ci": "jest --ci --runInBand",
+    "check": "tsc --noEmit",
     "deploy:permissions": "node scripts/deploy-permissions.js"
   },
   "jest": {
