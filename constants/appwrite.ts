@@ -21,6 +21,8 @@ export const CUSTOMERS_COLLECTION_ID = ENV.COLLECTIONS.CUSTOMERS;
 export const SALES_COLLECTION_ID = ENV.COLLECTIONS.SALES;
 export const AUTOFILL_COLLECTION_ID = ENV.COLLECTIONS.AUTOFILL;
 export const PERMISSION_CONFIG_COLLECTION_ID = 'permission_config';
+export const AUDIT_LOGS_COLLECTION_ID = ENV.COLLECTIONS.AUDIT_LOGS;
+export const STACKS_COLLECTION_ID = ENV.COLLECTIONS.STACKS;
 
 // Google OAuth2 provider config example:
 // account.createOAuth2Session('google', 'app://redirect', 'app://redirect');

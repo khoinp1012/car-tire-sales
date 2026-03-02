@@ -3,7 +3,7 @@ import { View, Text, Alert } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Databases, Query } from 'react-native-appwrite';
 import appwrite, { DATABASE_ID, INVENTORY_COLLECTION_ID } from '@/constants/appwrite';
-import InventoryForm from './InventoryForm';
+import InventoryForm from '@/components/forms/InventoryForm';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';

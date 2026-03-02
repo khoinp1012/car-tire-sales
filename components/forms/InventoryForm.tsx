@@ -195,7 +195,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
     }
   };
 
-  // Submit logic: insert or modify via inventoryService (RxDB Mirror)
+  // Submit logic: insert or modify via inventoryService (Local DB Mirror)
   const handleSubmit = async () => {
     setLoading(true);
     try {

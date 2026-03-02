@@ -86,17 +86,17 @@ export class PermissionConfig extends Model {
     @text('appwrite_id') appwriteId!: string;
 }
 
-export class AuditLog extends Model {
-    static table = 'audit_logs';
+export class Stack extends Model {
+    static table = 'stacks';
 
-    @text('entity_id') entityId!: string;
-    @text('entity_type') entityType!: string;
+    @text('stack_id') stackId!: string;
+    @text('name') name!: string;
+    @text('description') description!: string;
+    @text('inventory_ids') inventoryIds!: string;
     @field('version') version!: number;
-    @text('action') action!: string;
-    @text('snapshot') snapshot!: string;
-    @text('user_id') userId!: string;
-    @text('timestamp') timestamp!: string;
-    @text('device_id') deviceId!: string;
-    @text('appwrite_id') appwriteId!: string;
+    @field('deleted') deleted!: boolean;
+    @text('last_modified_by') lastModifiedBy!: string;
     @readonly @date('created_at') createdAt!: Date;
+    @readonly @date('updated_at') updatedAt!: Date;
+    @text('appwrite_id') appwriteId!: string;
 }

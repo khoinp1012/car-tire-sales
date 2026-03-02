@@ -3,7 +3,7 @@ import { View, Text } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Databases, Query } from 'react-native-appwrite';
 import appwrite, { DATABASE_ID, CUSTOMERS_COLLECTION_ID } from '@/constants/appwrite';
-import CustomerForm from './CustomerForm';
+import CustomerForm from '@/components/forms/CustomerForm';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';

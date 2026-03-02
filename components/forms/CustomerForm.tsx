@@ -59,11 +59,11 @@ export default function CustomerForm({ mode = 'insert', customerData, documentId
 
       let result;
       if (mode === 'modify' && documentId) {
-        // Update existing customer via Service (RxDB Mirror)
+        // Update existing customer via Service (Local DB Mirror)
         result = await customerService.updateCustomer(documentId, customerPayload);
         console.log('Customer updated successfully:', result);
       } else {
-        // Insert new customer via Service (RxDB Mirror)
+        // Insert new customer via Service (Local DB Mirror)
         result = await customerService.createCustomer(customerPayload);
         console.log('Customer inserted successfully:', result);
       }

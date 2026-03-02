@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import CustomerForm from './CustomerForm';
+import CustomerForm from '@/components/forms/CustomerForm';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 const styles = StyleSheet.create({

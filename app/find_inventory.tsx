@@ -158,36 +158,37 @@ const FindInventoryContent: React.FC = () => {
       ];
 
       // Add brand filter if selected
+      const searchFilters: any = {};
+
       if (selectedBrand) {
-        queries.push(Query.equal('brand', selectedBrand));
+        searchFilters.brand = selectedBrand;
       }
 
       // Add radius filter if selected
       if (selectedRadius) {
-        queries.push(Query.equal('radius_size', parseInt(selectedRadius)));
+        searchFilters.radiusSize = parseInt(selectedRadius);
       }
 
-      // Order by sequence for consistent results
-      queries.push(Query.orderDesc('sequence'));
+      console.log('[FindInventoryScreen] Searching LOCAL DB with filters:', searchFilters);
 
-      const result = await databases.listDocuments(DATABASE_ID, INVENTORY_COLLECTION_ID, queries);
+      // Search using local WatermelonDB (OFFLINE-FIRST)
+      const { inventoryService } = await import('@/utils/inventoryService');
+      const results = await inventoryService.searchItems(searchFilters);
 
-      console.log('[FindInventoryScreen] Search completed:', {
-        totalFound: result.documents.length,
-        queries: queries.length
+      console.log('[FindInventoryScreen] Search completed from LOCAL DB:', {
+        totalFound: results.length
       });
 
-      // Map documents to InventoryItem type
-      const inventoryItems = result.documents.map((doc: any) => ({
-        $id: doc.$id,
-        sequence: doc.sequence,
-        brand: doc.brand,
-        size: doc.size,
-        unit_price: doc.unit_price,
-        radius_size: doc.radius_size,
-        sold: doc.sold,
-        full_description: doc.full_description,
-        ...doc
+      // Map WatermelonDB models to InventoryItem type
+      const inventoryItems = results.map((item) => ({
+        $id: item.id,
+        sequence: item.sequence,
+        brand: item.brand,
+        size: item.size,
+        unit_price: item.unitPrice,
+        radius_size: item.radiusSize,
+        sold: item.sold,
+        full_description: item.fullDescription,
       }));
 
       setItems(inventoryItems);

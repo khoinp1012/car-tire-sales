@@ -20,6 +20,44 @@
                 "users.read",
                 "users.write"
             ]
+        },
+        {
+            "$id": "sync-collection-permissions",
+            "name": "sync-collection-permissions",
+            "runtime": "node-18.0",
+            "path": "functions/sync-collection-permissions",
+            "entrypoint": "src/index.js",
+            "execute": [
+                "any"
+            ],
+            "events": [],
+            "schedule": "",
+            "timeout": 30,
+            "enabled": true,
+            "logging": true,
+            "scopes": [
+                "databases.read",
+                "databases.write"
+            ]
+        },
+        {
+            "$id": "autonomous-auditing",
+            "name": "autonomous-auditing",
+            "runtime": "node-18.0",
+            "path": "functions/autonomous-auditing",
+            "entrypoint": "src/index.js",
+            "execute": [],
+            "events": [
+                "databases.*.collections.*.documents.*"
+            ],
+            "schedule": "",
+            "timeout": 15,
+            "enabled": true,
+            "logging": true,
+            "scopes": [
+                "databases.read",
+                "databases.write"
+            ]
         }
     ]
 }

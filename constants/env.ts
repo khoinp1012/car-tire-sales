@@ -27,6 +27,7 @@ export const ENV = {
         AUTOFILL: process.env.EXPO_PUBLIC_COLLECTION_AUTOFILL || '',
         USER_ROLES: process.env.EXPO_PUBLIC_COLLECTION_USER_ROLES || 'user_roles',
         STACKS: process.env.EXPO_PUBLIC_COLLECTION_STACKS || 'stacks',
+        AUDIT_LOGS: process.env.EXPO_PUBLIC_COLLECTION_AUDIT_LOGS || 'audit_logs',
     },
 
     GOOGLE: {

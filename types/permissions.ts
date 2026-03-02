@@ -125,6 +125,7 @@ export interface PermissionCheckResult {
     allowed: boolean;
     reason?: string;
     requiredRole?: string;
+    context?: UserPermissionContext;
 }
 
 /**

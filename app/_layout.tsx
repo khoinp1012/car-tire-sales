@@ -12,6 +12,10 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import i18n from '@/constants/i18n';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+import { performCriticalSync, startSync } from '@/utils/syncService';
+import { useState } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+
 const queryClient = new QueryClient();
 
 export {
@@ -33,6 +37,9 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
+  const [criticalSyncComplete, setCriticalSyncComplete] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
@@ -40,14 +47,47 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
-      // Template initialization will be handled on-demand in template loading
-      console.log('App loaded, templates will be initialized when needed.');
+      // Perform TIER 1 CRITICAL sync (Blocking)
+      performCriticalSync()
+        .then((success) => {
+          if (success) {
+            console.log('[RootLayout] ✓ Critical sync completed, app ready');
+            setCriticalSyncComplete(true);
+            SplashScreen.hideAsync();
+
+            // Start background Tier 2 & 3 sync
+            startSync().catch(err => {
+              console.error('[RootLayout] Background sync failed:', err);
+            });
+          } else {
+            console.error('[RootLayout] ✗ Critical sync failed');
+            setSyncError('Failed to load critical data. Please check your connection.');
+            SplashScreen.hideAsync();
+          }
+        })
+        .catch(err => {
+          console.error('[RootLayout] ✗ Critical sync error:', err);
+          setSyncError('Failed to initialize app. Please restart.');
+          SplashScreen.hideAsync();
+        });
     }
   }, [loaded]);
 
   if (!loaded) {
     return null;
+  }
+
+  // Show loading screen while critical sync is in progress
+  if (!criticalSyncComplete) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Preparing your workspace...</Text>
+        {syncError && (
+          <Text style={styles.errorText}>{syncError}</Text>
+        )}
+      </View>
+    );
   }
 
   return (
@@ -102,3 +142,24 @@ function RootLayoutNav() {
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#ff3b30',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+});

@@ -70,8 +70,8 @@ set_var() {
     local VAL=$2
     local FUNC_ID="sync-collection-permissions"
     
-    # Try to find if variable already exists and get its internal ID
-    local VAR_ID=$($CLI functions list-variables --function-id "$FUNC_ID" --json | grep -B 1 "\"key\": \"$KEY\"" | grep "\"\\$id\"" | cut -d '"' -f 4)
+    # Try to find if variable already exists and get its internal ID using jq
+    local VAR_ID=$($CLI functions list-variables --function-id "$FUNC_ID" --json | jq -r ".variables[] | select(.key == \"$KEY\") | .[\"\$id\"]")
     
     if [ -z "$VAR_ID" ]; then
         # Create new

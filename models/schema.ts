@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export const schema = appSchema({
-    version: 2,
+    version: 4,
     tables: [
         tableSchema({
             name: 'inventory',
@@ -89,18 +89,18 @@ export const schema = appSchema({
             ]
         }),
         tableSchema({
-            name: 'audit_logs',
+            name: 'stacks',
             columns: [
-                { name: 'entity_id', type: 'string', isIndexed: true },
-                { name: 'entity_type', type: 'string' },
+                { name: 'stack_id', type: 'string', isIndexed: true },
+                { name: 'name', type: 'string' },
+                { name: 'description', type: 'string' },
+                { name: 'inventory_ids', type: 'string' },
                 { name: 'version', type: 'number' },
-                { name: 'action', type: 'string' },
-                { name: 'snapshot', type: 'string' },
-                { name: 'user_id', type: 'string' },
-                { name: 'timestamp', type: 'string', isIndexed: true },
-                { name: 'device_id', type: 'string' },
-                { name: 'appwrite_id', type: 'string', isIndexed: true },
-                { name: 'created_at', type: 'number' }
+                { name: 'deleted', type: 'boolean' },
+                { name: 'last_modified_by', type: 'string' },
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'appwrite_id', type: 'string', isIndexed: true }
             ]
         })
     ]

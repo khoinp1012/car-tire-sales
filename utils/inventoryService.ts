@@ -95,5 +95,55 @@ export const inventoryService = {
         return await db.get<Inventory>('inventory')
             .query(...conditions)
             .fetch();
+    },
+
+    /**
+     * Search inventory items with filters
+     * OFFLINE-FIRST: Searches local WatermelonDB
+     */
+    async searchItems(filters: {
+        brand?: string;
+        radiusSize?: number;
+        sold?: boolean;
+        searchText?: string;
+    }) {
+        const db = getDatabase();
+        let query = db.get<Inventory>('inventory').query(Q.where('deleted', false));
+
+        // Add brand filter (Case-insensitive fuzzy match)
+        if (filters.brand) {
+            const brandTerm = filters.brand.trim();
+            query = query.extend(
+                Q.where('brand', Q.like(`%${Q.sanitizeLikeString(brandTerm)}%`))
+            );
+        }
+
+        // Add radius filter
+        if (filters.radiusSize !== undefined && !isNaN(filters.radiusSize)) {
+            query = query.extend(Q.where('radius_size', filters.radiusSize));
+        }
+
+        // Add sold filter
+        if (filters.sold !== undefined) {
+            query = query.extend(Q.where('sold', filters.sold));
+        }
+
+        // Add text search (searches in brand, size, and full_description)
+        if (filters.searchText && filters.searchText.trim()) {
+            const searchTerm = filters.searchText.trim().toLowerCase();
+            query = query.extend(
+                Q.or(
+                    Q.where('brand', Q.like(`%${Q.sanitizeLikeString(searchTerm)}%`)),
+                    Q.where('size', Q.like(`%${Q.sanitizeLikeString(searchTerm)}%`)),
+                    Q.where('full_description', Q.like(`%${Q.sanitizeLikeString(searchTerm)}%`))
+                )
+            );
+        }
+
+        // Order by sequence descending
+        query = query.extend(Q.sortBy('sequence', Q.desc));
+
+        const results = await query.fetch();
+        return results;
     }
 };

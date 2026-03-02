@@ -12,6 +12,8 @@ import LanguageSwitcherBox from '@/components/LanguageSwitcherBox';
 import i18n from '@/constants/i18n';
 import { GOOGLE_WEB_CLIENT_ID, APPWRITE_NATIVE_SIGNIN_FUNCTION_URL } from '@/constants/googleConfig';
 import { ENV } from '@/constants/env';
+import { updateUserId } from '@/utils/sessionContext';
+import { performCriticalSync, startSync } from '@/utils/syncService';
 
 function IndexScreenContent() {
   const router = useRouter();
@@ -121,6 +123,13 @@ function IndexScreenContent() {
     try {
       const session = await account.createSession(userId, secret);
       const user = await account.get();
+
+      console.log('[Index] Session created, updating context \u0026 performing critical sync...');
+      await updateUserId(user.$id);
+      await performCriticalSync();
+
+      // Start background sync
+      startSync().catch(console.error);
 
       router.replace({
         pathname: '/welcome',
@@ -343,6 +352,13 @@ Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
       console.log('Fetching user details from account.get()...');
       const user = await account.get();
       console.log('User details retrieved:', user.email);
+
+      console.log('[Index] Native session created, updating context \u0026 performing critical sync...');
+      await updateUserId(user.$id);
+      await performCriticalSync();
+
+      // Start background sync
+      startSync().catch(console.error);
 
       // Navigate to welcome screen
       router.replace({

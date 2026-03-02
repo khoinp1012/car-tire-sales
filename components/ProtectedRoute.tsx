@@ -108,7 +108,11 @@ export function ProtectedRoute({
   }
 
   // User has permission, render the protected content
-  return <>{children}</>;
+  return (
+    <View style={styles.container}>
+      {children}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
