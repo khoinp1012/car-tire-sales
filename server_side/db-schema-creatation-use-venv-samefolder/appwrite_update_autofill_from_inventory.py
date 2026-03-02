@@ -19,7 +19,7 @@ def main(context):
     databases = Databases(client)
     context.log("Appwrite client and Databases initialized.")
 
-    DB_ID = "687ca1a800338d2b13ae"
+    DB_ID = "YOUR_PROJECT_ID_HERE"
     INVENTORY_COLLECTION_ID = "687ca1ac00054b181ab0"
     AUTOFILL_COLLECTION_NAME = "autofill"
     N_ROWS = int(os.environ.get("N_ROWS", "50"))
