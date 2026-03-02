@@ -60,4 +60,4 @@ server_side/venv/
 server_side/__pycache__/
 server_side/*.pyc
 *.egg-info/
-.pytest_cache/
+.pytest_cache/ios/.xcode.env
