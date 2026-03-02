@@ -54,3 +54,4 @@ android/build/
 
 # typescript
 *.tsbuildinfo
+server_side/database-connection-info
