@@ -6,7 +6,6 @@ Lightweight point-of-sale mobile app for car tire shops built with Expo and Appw
 - Expo + React Native frontend
 - Appwrite backend integrations
 - Permission and sync utilities, offline support
-- Demo screenshot: `assets/emulator_screenshot.png`
 
 ## Tech stack
 - React Native (Expo)
@@ -55,13 +54,6 @@ Lightweight point-of-sale mobile app for car tire shops built with Expo and Appw
 
 ## Contributing
 - Please open issues or pull requests. Add tests for new functionality.
-
-## Screenshot / Demo
-Below is a demo screenshot captured from the emulator. No rebuild required — this image is already included in the repository at `assets/emulator_screenshot.png`.
-
-![App demo screenshot](assets/emulator_screenshot.png)
-
-If you prefer a short GIF instead, add it to `assets/` and replace the image link above.
 
 ## License
 MIT License — see [LICENSE](LICENSE) for details.
