@@ -14,27 +14,35 @@ Lightweight point-of-sale mobile app for car tire shops built with Expo and Appw
 - Appwrite (backend)
 - Node.js / npm
 
-## Quick setup (developer)
-1. Copy environment variables from `.env.example` to `.env` and fill values.
-2. Install dependencies:
+## Development Setup
 
-```bash
-npm ci
-```
+### Prerequisites
+- **Node.js 18+** (install via [nvm](https://github.com/nvm-sh/nvm) — recommended):
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.6/install.sh | bash
+  nvm install --lts
+  nvm use --lts
+  ```
 
-3. Start Expo (local development):
+### Install & Run
+1. Copy environment variables from `.env.example` to `.env` and fill with your values.
+2. Install dependencies (use `--legacy-peer-deps` for React 19 compatibility):
+   ```bash
+   npm install --legacy-peer-deps
+   ```
 
-```bash
-# from repo root
-npx expo start
-# or use the VS Code task: Run Expo Android
-```
+3. Start Expo in development mode:
+   ```bash
+   npx expo start
+   # or: npm start
+   ```
 
-4. To run tests:
-
-```bash
-npm test
-```
+4. Validate code before committing:
+   ```bash
+   npm run check        # TypeScript type-check
+   npm run lint         # ESLint (may require fresh install)
+   npm run test:ci      # Run tests in CI mode
+   ```
 
 ## Environment
 - This repository does NOT include secret `.env` files. Use `.env.example` as a template.
