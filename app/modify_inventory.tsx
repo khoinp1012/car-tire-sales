@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Databases, Query } from 'react-native-appwrite';
 import appwrite, { DATABASE_ID, INVENTORY_COLLECTION_ID } from '@/constants/appwrite';
 import InventoryForm from '@/components/forms/InventoryForm';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Logger } from '@/utils/logger';
 import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
 import { QR_PREFIXES } from '@/constants/config';
@@ -24,16 +25,7 @@ function ModifyInventoryContent(props: any) {
   // Get scanned QR value from navigation params
   const scannedValue = params.scanned as string;
 
-  useEffect(() => {
-    if (scannedValue) {
-      fetchInventoryData(scannedValue);
-    } else {
-      setError(i18n.t('noQRCodeScanned', { locale: lang }));
-      setLoading(false);
-    }
-  }, [scannedValue]);
-
-  const fetchInventoryData = async (qrValue: string) => {
+  const fetchInventoryData = React.useCallback(async (qrValue: string) => {
     try {
       setLoading(true);
       const databases = new Databases(appwrite);
@@ -64,12 +56,21 @@ function ModifyInventoryContent(props: any) {
         setError(i18n.t('noInventoryItemFound', { locale: lang, sequence }));
       }
     } catch (e) {
-      console.error('Error fetching inventory data:', e);
+      Logger.error('Error fetching inventory data:', e);
       setError(i18n.t('failedToFetchInventory', { locale: lang }));
     } finally {
       setLoading(false);
     }
-  };
+  }, [lang]);
+
+  useEffect(() => {
+    if (scannedValue) {
+      fetchInventoryData(scannedValue);
+    } else {
+      setError(i18n.t('noQRCodeScanned', { locale: lang }));
+      setLoading(false);
+    }
+  }, [scannedValue, fetchInventoryData, lang]);
 
   if (loading) {
     return (

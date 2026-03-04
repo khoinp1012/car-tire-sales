@@ -10,6 +10,7 @@
 
 import { account } from '@/constants/appwrite';
 import { Logger } from '../utils/logger';
+import React from 'react';
 import {
     getUserPermissionContext,
     canAccessCollection,
@@ -76,7 +77,7 @@ export function usePermissions() {
      * Check if user can access a collection with specific action
      * Uses cache if available, otherwise fetches
      */
-    const canAccess = async (
+    const canAccess = React.useCallback(async (
         collection: CollectionName,
         action: PermissionAction
     ): Promise<boolean> => {
@@ -93,12 +94,12 @@ export function usePermissions() {
         // Fallback to fresh check if not in context or context is missing
         const result = await canAccessCollection(userId, collection, action);
         return result.allowed;
-    };
+    }, [userId, permissionContext]);
 
     /**
      * Check if user can access a route
      */
-    const canRoute = async (routeName: string): Promise<boolean> => {
+    const canRoute = React.useCallback(async (routeName: string): Promise<boolean> => {
         if (!userId) return false;
 
         if (permissionContext) {
@@ -108,12 +109,12 @@ export function usePermissions() {
         }
 
         return await canAccessRouteService(userId, routeName);
-    };
+    }, [userId, permissionContext]);
 
     /**
      * Check if user has a feature enabled
      */
-    const hasPermissionFeature = async (featureName: string): Promise<boolean> => {
+    const hasPermissionFeature = React.useCallback(async (featureName: string): Promise<boolean> => {
         if (!userId) return false;
 
         if (permissionContext) {
@@ -123,42 +124,42 @@ export function usePermissions() {
         }
 
         return await hasFeature(userId, featureName);
-    };
+    }, [userId, permissionContext]);
 
     /**
      * Get full permission context for user
      */
-    const getContext = async (): Promise<UserPermissionContext | null> => {
+    const getContext = React.useCallback(async (): Promise<UserPermissionContext | null> => {
         if (!userId) return null;
         return permissionContext || await getUserPermissionContext(userId);
-    };
+    }, [userId, permissionContext]);
 
     /**
      * Refresh user info - invalidates the cache to force a background refetch
      */
-    const refresh = async () => {
+    const refresh = React.useCallback(async () => {
         Logger.info('[usePermissions] Refreshing permissions cache...');
         await queryClient.invalidateQueries({ queryKey: PERMISSION_KEYS.all });
-    };
+    }, [queryClient]);
 
     /**
      * Synchronous route access check using cached permission context
      */
-    const canAccessRoute = (routeName: string): boolean => {
+    const canAccessRoute = React.useCallback((routeName: string): boolean => {
         if (!permissionContext) return false;
         return permissionContext.allowedRoutes.includes(routeName) ||
             permissionContext.allowedRoutes.includes('*');
-    };
+    }, [permissionContext]);
 
     /**
      * Get access denied message for a route
      */
-    const getAccessDeniedMessage = (routeName: string): string => {
+    const getAccessDeniedMessage = React.useCallback((routeName: string): string => {
         if (!userRole) {
             return 'You do not have a role assigned. Please contact an administrator.';
         }
         return `Your role (${userRole}) does not have permission to access ${routeName}. Please contact an administrator if you believe this is an error.`;
-    };
+    }, [userRole]);
 
     return {
         loading,

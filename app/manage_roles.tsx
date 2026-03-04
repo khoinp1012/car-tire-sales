@@ -27,6 +27,7 @@ import i18n from '@/constants/i18n';
 import { getRoleDisplayName } from '@/utils/roleTranslation';
 import { useQueryClient } from '@tanstack/react-query';
 import { PERMISSION_KEYS } from '@/hooks/usePermissions';
+import { Logger } from '@/utils/logger';
 
 export default function ManageRolesScreen() {
     const router = useRouter();
@@ -37,11 +38,30 @@ export default function ManageRolesScreen() {
     const [selectedRole, setSelectedRole] = useState<string>('admin');
     const [isAdmin, setIsAdmin] = useState(false);
 
-    useEffect(() => {
-        checkAdminAccess();
-    }, []);
+    const loadPermissionConfig = React.useCallback(async () => {
+        try {
+            setLoading(true);
+            const activeConfig = await getActivePermissionConfig();
 
-    const checkAdminAccess = async () => {
+            if (!activeConfig) {
+                Alert.alert(
+                    i18n.t('noConfigurationFound'),
+                    i18n.t('noActivePermissionConfig'),
+                    [{ text: 'OK', onPress: () => router.back() }]
+                );
+                return;
+            }
+
+            setConfig(activeConfig);
+        } catch (error) {
+            Logger.error('Error loading permission config:', error);
+            Alert.alert(i18n.t('error'), i18n.t('failedToLoadPermissionConfig'));
+        } finally {
+            setLoading(false);
+        }
+    }, [router]);
+
+    const checkAdminAccess = React.useCallback(async () => {
         try {
             const user = await account.get();
             const userRole = await getUserRole(user.$id);
@@ -58,33 +78,15 @@ export default function ManageRolesScreen() {
             setIsAdmin(true);
             await loadPermissionConfig();
         } catch (error) {
+            Logger.error('Error verifying admin access:', error);
             Alert.alert(i18n.t('error'), i18n.t('failedToVerifyAdminAccess'));
             router.back();
         }
-    };
+    }, [router, loadPermissionConfig]);
 
-    const loadPermissionConfig = async () => {
-        try {
-            setLoading(true);
-            const activeConfig = await getActivePermissionConfig();
-
-            if (!activeConfig) {
-                Alert.alert(
-                    i18n.t('noConfigurationFound'),
-                    i18n.t('noActivePermissionConfig'),
-                    [{ text: 'OK', onPress: () => router.back() }]
-                );
-                return;
-            }
-
-            setConfig(activeConfig);
-        } catch (error) {
-            console.error('Error loading permission config:', error);
-            Alert.alert(i18n.t('error'), i18n.t('failedToLoadPermissionConfig'));
-        } finally {
-            setLoading(false);
-        }
-    };
+    useEffect(() => {
+        checkAdminAccess();
+    }, [checkAdminAccess]);
 
     const handleSaveConfig = async () => {
         if (!config) return;

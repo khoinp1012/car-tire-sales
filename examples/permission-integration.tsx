@@ -12,6 +12,8 @@ import { PermissionGuard } from '@/components/PermissionGuard';
 import { usePermissions } from '@/hooks/usePermissions';
 import { databases, DATABASE_ID, INVENTORY_COLLECTION_ID, ID } from '@/constants/appwrite';
 import { buildRowPermissionFilters, generateDocumentPermissions } from '@/utils/permissionService';
+import { Logger } from '@/utils/logger';
+
 
 /**
  * Example 1: Using PermissionGuard for UI Elements
@@ -56,7 +58,8 @@ export function ExampleHookPermissions() {
     const { canAccess, userRole, isAdmin, loading } = usePermissions();
 
     const handleCreateInventory = async () => {
-        const createInventoryItem = () => console.log('Creating item...');
+        const createInventoryItem = () => Logger.log('Creating item...');
+
         // Check permission before action
         if (await canAccess('inventory', 'create')) {
             // User has permission, proceed
@@ -109,7 +112,8 @@ export async function fetchInventoryWithPermissions(userId: string) {
 
         return result.documents;
     } catch (error) {
-        console.error('Error fetching inventory:', error);
+        Logger.error('Error fetching inventory:', error);
+
         return [];
     }
 }
@@ -135,7 +139,8 @@ export async function createSaleWithPermissions(userId: string, saleData: any) {
 
         return result;
     } catch (error) {
-        console.error('Error creating sale:', error);
+        Logger.error('Error creating sale:', error);
+
         throw error;
     }
 }
@@ -151,11 +156,12 @@ export function ExampleMultiplePermissions() {
         const canUpdateCustomers = await canAccess('customers', 'update');
         const canAccessAdmin = await canRoute('manage_permissions');
 
-        console.log('Permissions:', {
+        Logger.log('Permissions:', {
             canCreateInventory,
             canUpdateCustomers,
             canAccessAdmin,
         });
+
     };
 
     return (
@@ -175,12 +181,13 @@ export function ExamplePermissionContext() {
         const context = await getContext();
 
         if (context) {
-            console.log('User Role:', context.role);
-            console.log('Role Display Name:', context.roleDefinition.displayName);
-            console.log('Hierarchy Level:', context.roleDefinition.hierarchy);
-            console.log('Allowed Collections:', context.allowedCollections);
-            console.log('Allowed Routes:', context.allowedRoutes);
-            console.log('Features:', context.features);
+            Logger.log('User Role:', context.role);
+            Logger.log('Role Display Name:', context.roleDefinition.displayName);
+            Logger.log('Hierarchy Level:', context.roleDefinition.hierarchy);
+            Logger.log('Allowed Collections:', context.allowedCollections);
+            Logger.log('Allowed Routes:', context.allowedRoutes);
+            Logger.log('Features:', context.features);
+
         }
     };
 

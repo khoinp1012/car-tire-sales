@@ -66,7 +66,7 @@ describe('usePermissions hook', () => {
         (getUserRole as jest.Mock).mockResolvedValue('admin');
         (getUserPermissionContext as jest.Mock).mockResolvedValue(mockContext);
 
-        console.log('Mock setup complete');
+
     });
 
     it('should initialize with user info and permissions', async () => {

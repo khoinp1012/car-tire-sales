@@ -4,22 +4,23 @@ import QRScannerWithBox from '@/components/QRScannerWithBox';
 import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Logger } from '@/utils/logger';
 
 function ScanPendingSaleContent() {
   const { lang } = useLanguage();
   const router = useRouter();
 
-  const handleScanned = (data: string) => {
-    console.log('[SCAN PENDING SALE] QR code scanned:', data);
-    router.push({ 
-      pathname: '/pending_sale', 
-      params: { scanned: data.trim() } 
+  const handleScanned = React.useCallback((data: string) => {
+    Logger.log('[SCAN PENDING SALE] QR code scanned:', data);
+    router.push({
+      pathname: '/pending_sale',
+      params: { scanned: data.trim() }
     });
-  };
+  }, [router]);
 
-  const handleCancel = () => {
+  const handleCancel = React.useCallback(() => {
     router.back();
-  };
+  }, [router]);
 
   return (
     <QRScannerWithBox

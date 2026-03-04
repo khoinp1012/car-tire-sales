@@ -1,6 +1,6 @@
 
 import { View } from '@/components/Themed';
-import { StyleSheet, ScrollView, Alert, Text } from 'react-native';
+import { StyleSheet, ScrollView, Text } from 'react-native';
 import ThemedButton from '@/components/ThemedButton';
 import i18n from '@/constants/i18n';
 import { Logger } from "../utils/logger";
@@ -54,8 +54,7 @@ function WelcomeContent() {
     useCallback(() => {
       Logger.info('[Welcome] Screen focused, refreshing permissions...');
       refresh();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []) // Empty deps - only run the effect, not recreate it
+    }, [refresh])
   );
 
   Logger.info('[Welcome] Screen loaded with email:', email);

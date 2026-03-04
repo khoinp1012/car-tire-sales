@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
+
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import ThemedButton from '@/components/ThemedButton';
 import ThermalPrinter, { useThermalPrinter } from '@/components/ThermalPrinter';
@@ -18,9 +19,10 @@ export default function ThermalPrinterExample() {
   const [selectedDevice, setSelectedDevice] = useState<ThermalDevice | null>(null);
   const [debug, setDebug] = useState('');
   const qrRef = useRef<any>(null);
-  
+
   // Example using the useThermalPrinter hook
-  const { printText, printQR, printInventory } = useThermalPrinter();
+  useThermalPrinter();
+
 
   // Example inventory data
   const inventoryData = {
@@ -100,7 +102,7 @@ Thank you for your purchase!
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Thermal Printer Examples</Text>
-      
+
       {/* Thermal Printer Component - handles device selection */}
       <ThermalPrinter
         onDeviceSelected={setSelectedDevice}
@@ -111,21 +113,21 @@ Thank you for your purchase!
       {selectedDevice && (
         <View style={styles.actionsSection}>
           <Text style={styles.sectionTitle}>Printing Actions</Text>
-          
+
           <ThemedButton
             title="Print Inventory Label"
             onPress={handlePrintInventoryDirect}
             color="#4CAF50"
             style={styles.button}
           />
-          
+
           <ThemedButton
             title="Print Custom Text"
             onPress={handlePrintTextDirect}
             color="#2196F3"
             style={styles.button}
           />
-          
+
           <ThemedButton
             title="Print QR Code"
             onPress={handlePrintQRDirect}

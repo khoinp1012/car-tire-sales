@@ -9,12 +9,13 @@
 
 import { databases, DATABASE_ID, ID } from '../constants/appwrite';
 import { DEFAULT_PERMISSION_CONFIG } from '../config/permissions.config';
+import { Logger } from './logger';
 
 const PERMISSION_CONFIG_COLLECTION_ID = 'permission_config';
 
 async function seedPermissionConfig() {
     try {
-        console.log('🚀 Seeding permission configuration...');
+        Logger.log('🚀 Seeding permission configuration...');
 
         // Check if there's already an active configuration
         const existing = await databases.listDocuments(
@@ -23,9 +24,9 @@ async function seedPermissionConfig() {
         );
 
         if (existing.documents.length > 0) {
-            console.log('⚠️  Warning: Permission configuration already exists!');
-            console.log(`   Found ${existing.documents.length} document(s).`);
-            console.log('   Deactivating all existing configurations...');
+            Logger.log('⚠️  Warning: Permission configuration already exists!');
+            Logger.log(`   Found ${existing.documents.length} document(s).`);
+            Logger.log('   Deactivating all existing configurations...');
 
             // Deactivate all existing configs
             for (const doc of existing.documents) {
@@ -39,7 +40,7 @@ async function seedPermissionConfig() {
         }
 
         // Create new active configuration
-        console.log('📝 Creating new permission configuration...');
+        Logger.log('📝 Creating new permission configuration...');
 
         const doc = await databases.createDocument(
             DATABASE_ID,
@@ -54,19 +55,19 @@ async function seedPermissionConfig() {
             }
         );
 
-        console.log('✅ Permission configuration seeded successfully!');
-        console.log(`   Document ID: ${doc.$id}`);
-        console.log(`   Version: ${doc.version}`);
-        console.log('');
-        console.log('🎉 Setup complete! Your permission system is ready to use.');
+        Logger.log('✅ Permission configuration seeded successfully!');
+        Logger.log(`   Document ID: ${doc.$id}`);
+        Logger.log(`   Version: ${doc.version}`);
+        Logger.log('');
+        Logger.log('🎉 Setup complete! Your permission system is ready to use.');
 
     } catch (error: any) {
-        console.error('❌ Error seeding permission configuration:', error);
+        Logger.error('❌ Error seeding permission configuration:', error);
 
         if (error.code === 404) {
-            console.error('');
-            console.error('💡 The permission_config collection does not exist.');
-            console.error('   Please run: ./seed-permissions.sh first');
+            Logger.error('');
+            Logger.error('💡 The permission_config collection does not exist.');
+            Logger.error('   Please run: ./seed-permissions.sh first');
         }
 
         process.exit(1);

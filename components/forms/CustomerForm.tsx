@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { Logger } from '@/utils/logger';
 import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
 import SuccessPopup from '@/components/SuccessPopup';
 import ThemedButton from '@/components/ThemedButton';
-import appwrite from '@/constants/appwrite';
 import { customerService } from '@/utils/customerService';
 import { useRouter } from 'expo-router';
 
@@ -20,7 +20,6 @@ export default function CustomerForm({ mode = 'insert', customerData, documentId
   const [address, setAddress] = useState(mode === 'modify' && customerData?.address ? customerData.address : '');
   const [discountPercent, setDiscountPercent] = useState(mode === 'modify' && customerData?.discount_percent ? String(customerData.discount_percent) : '0');
   const [reference, setReference] = useState(mode === 'modify' && customerData?.reference ? String(customerData.reference) : '');
-  const [fullDescription, setFullDescription] = useState(mode === 'modify' && customerData?.full_description ? customerData.full_description : '');
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -61,11 +60,11 @@ export default function CustomerForm({ mode = 'insert', customerData, documentId
       if (mode === 'modify' && documentId) {
         // Update existing customer via Service (Local DB Mirror)
         result = await customerService.updateCustomer(documentId, customerPayload);
-        console.log('Customer updated successfully:', result);
+        Logger.log('Customer updated successfully:', result);
       } else {
         // Insert new customer via Service (Local DB Mirror)
         result = await customerService.createCustomer(customerPayload);
-        console.log('Customer inserted successfully:', result);
+        Logger.log('Customer inserted successfully:', result);
       }
 
       setShowSuccess(true);
@@ -81,7 +80,6 @@ export default function CustomerForm({ mode = 'insert', customerData, documentId
           setAddress('');
           setDiscountPercent('0');
           setReference('');
-          setFullDescription('');
           setShowSuccess(false);
         }, 2000);
       } else {
@@ -92,7 +90,7 @@ export default function CustomerForm({ mode = 'insert', customerData, documentId
       }
 
     } catch (error) {
-      console.error('Error saving customer:', error);
+      Logger.error('Error saving customer:', error);
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToModifyCustomer', { locale: lang, mode }));
     } finally {
       setLoading(false);

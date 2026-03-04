@@ -5,7 +5,6 @@ import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
 import SuccessPopup from '@/components/SuccessPopup';
 import ThemedButton from '@/components/ThemedButton';
-import appwrite, { account } from '@/constants/appwrite';
 import { inventoryService } from '@/utils/inventoryService';
 import { getAutofillValues } from '@/utils/autofill';
 import { formatTireSize, compactTireSize } from '@/utils/tireSizeFormatter';
@@ -13,12 +12,46 @@ import { QR_PREFIXES } from '@/constants/config';
 import {
   setupThermalPrinter,
   printInventoryLabel,
-  printThermalQR,
-  printThermalText,
   printTestLabel,
   type ThermalDevice
 } from '@/utils/thermalPrinterService';
 import QRCode from 'react-native-qrcode-svg';
+import { Logger } from '@/utils/logger';
+
+// Format unit price with thousand separators for display
+const formatUnitPrice = (value: string | undefined | null) => {
+  if (typeof value !== 'string') return '';
+  const cleaned = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+  if (!cleaned) return '';
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? '' : num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+};
+
+// Custom filter functions
+const customFilter = (options: string[], inputText: string, isPrice: boolean = false, isTireSize: boolean = false) => {
+  if (!inputText) {
+    return options.map(opt => ({
+      id: opt,
+      title: isPrice ? formatUnitPrice(opt) : isTireSize ? formatTireSize(opt) : opt
+    }));
+  }
+  const searchText = inputText.toLowerCase().trim();
+  const filtered = options.filter(opt => {
+    const displayValue = isTireSize ? formatTireSize(opt) : opt;
+    return displayValue.toLowerCase().includes(searchText) || opt.toLowerCase().includes(searchText);
+  }).map(opt => ({
+    id: opt,
+    title: isPrice ? formatUnitPrice(opt) : isTireSize ? formatTireSize(opt) : opt
+  }));
+  const exactMatch = options.find(opt => opt.toLowerCase() === searchText);
+  if (!exactMatch && inputText.trim()) {
+    // For tire sizes, store in compact format but display formatted
+    const idValue = isTireSize ? compactTireSize(inputText) || inputText : inputText;
+    const titleValue = isPrice ? formatUnitPrice(inputText) : isTireSize ? inputText : inputText;
+    filtered.unshift({ id: idValue, title: titleValue });
+  }
+  return filtered;
+};
 
 // mode: 'insert' | 'modify'
 // If mode is 'modify', must provide itemData and documentId
@@ -39,7 +72,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
   const [unitPrice, setUnitPrice] = useState(mode === 'modify' && itemData?.unit_price ? String(itemData.unit_price) : '');
   const priceInputTextRef = useRef('');
   const [quantity, setQuantity] = useState('1');
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   // Autofill options fetched once
   const [brandOptions, setBrandOptions] = useState<string[]>([]);
@@ -58,7 +91,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
   const [selectedPrinter, setSelectedPrinter] = useState<ThermalDevice | null>(null);
   const [printerDebug, setPrinterDebug] = useState('');
   const [enablePrint, setEnablePrint] = useState(false);
-  const [lastInsertedSequence, setLastInsertedSequence] = useState<number | null>(null);
+  const [lastInsertedSequence] = useState<number | null>(null);
   const qrRef = useRef<any>(null);
   const testQrRef = useRef<any>(null);
   const [radiusSize, setRadiusSize] = useState(mode === 'modify' && itemData?.radius_size ? String(itemData.radius_size) : '');
@@ -67,14 +100,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
   const sizeInputRef = useRef<TextInput>(null);
   const priceInputRef = useRef<TextInput>(null);
 
-  useEffect(() => {
-    getAutofillValues('brand').then(setBrandOptions);
-    getAutofillValues('size').then(setSizeOptions);
-    getAutofillValues('unit_price').then(setPriceOptions);
-    initializePrinter();
-  }, []);
-
-  const initializePrinter = async () => {
+  const initializePrinter = React.useCallback(async () => {
     setPrinterDebug('Setting up thermal printer...');
     const result = await setupThermalPrinter(setPrinterDebug);
     if (result.success) {
@@ -84,42 +110,15 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
       setPrinterDebug(i18n.t('setupFailed', { locale: lang }));
     }
     setLoading(false);
-  };
+  }, [lang]);
 
-  // Format unit price with thousand separators for display
-  const formatUnitPrice = (value: string | undefined | null) => {
-    if (typeof value !== 'string') return '';
-    const cleaned = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-    if (!cleaned) return '';
-    const num = parseFloat(cleaned);
-    return isNaN(num) ? '' : num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-  };
+  useEffect(() => {
+    getAutofillValues('brand').then(setBrandOptions);
+    getAutofillValues('size').then(setSizeOptions);
+    getAutofillValues('unit_price').then(setPriceOptions);
+    initializePrinter();
+  }, [initializePrinter]);
 
-  // Custom filter functions
-  const customFilter = (options: string[], inputText: string, isPrice: boolean = false, isTireSize: boolean = false) => {
-    if (!inputText) {
-      return options.map(opt => ({
-        id: opt,
-        title: isPrice ? formatUnitPrice(opt) : isTireSize ? formatTireSize(opt) : opt
-      }));
-    }
-    const searchText = inputText.toLowerCase().trim();
-    const filtered = options.filter(opt => {
-      const displayValue = isTireSize ? formatTireSize(opt) : opt;
-      return displayValue.toLowerCase().includes(searchText) || opt.toLowerCase().includes(searchText);
-    }).map(opt => ({
-      id: opt,
-      title: isPrice ? formatUnitPrice(opt) : isTireSize ? formatTireSize(opt) : opt
-    }));
-    const exactMatch = options.find(opt => opt.toLowerCase() === searchText);
-    if (!exactMatch && inputText.trim()) {
-      // For tire sizes, store in compact format but display formatted
-      const idValue = isTireSize ? compactTireSize(inputText) || inputText : inputText;
-      const titleValue = isPrice ? formatUnitPrice(inputText) : isTireSize ? inputText : inputText;
-      filtered.unshift({ id: idValue, title: titleValue });
-    }
-    return filtered;
-  };
 
   useEffect(() => { setFilteredBrandOptions(customFilter(brandOptions, brandInputText)); }, [brandOptions, brandInputText]);
   useEffect(() => { setFilteredSizeOptions(customFilter(sizeOptions, sizeInputText, false, true)); }, [sizeOptions, sizeInputText]);
@@ -153,7 +152,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
   }, [size]);
 
   // Print logic - updated to use new thermal printer service
-  const handlePrintTest = async () => {
+  const handlePrintTest = React.useCallback(async () => {
     if (!selectedPrinter) {
       Alert.alert(i18n.t('printTest', { locale: lang }), i18n.t('pleaseSelectThermalPrinter', { locale: lang }));
       return;
@@ -164,9 +163,9 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
     if (success) {
       Alert.alert(i18n.t('printTest', { locale: lang }), i18n.t('testLabelSent', { locale: lang }));
     }
-  };
+  }, [lang, selectedPrinter]);
 
-  const handlePrintInventory = async (sequence: number) => {
+  const handlePrintInventory = React.useCallback(async (sequence: number) => {
     if (!enablePrint) return;
     if (!selectedPrinter) return;
     if (!qrRef.current) {
@@ -193,10 +192,10 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
     if (success) {
       setPrinterDebug(i18n.t('inventoryLabelPrinted', { locale: lang }));
     }
-  };
+  }, [enablePrint, selectedPrinter, lang, brand, size, unitPrice, radiusSize]);
 
   // Submit logic: insert or modify via inventoryService (Local DB Mirror)
-  const handleSubmit = async () => {
+  const handleSubmit = React.useCallback(async () => {
     setLoading(true);
     try {
       let docData;
@@ -236,11 +235,11 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
         setDropdownResetKey(k => k + 1);
       }
     } catch (e) {
-      console.error('[InventoryForm] Error saving:', e);
+      Logger.error('[InventoryForm] Error saving:', e);
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('errorSavingInventory', { locale: lang }));
     }
     setLoading(false);
-  };
+  }, [brand, size, unitPrice, radiusSize, mode, documentId, onSuccess, enablePrint, handlePrintInventory, lang]);
 
   // UI (reuse from InsertInventoryScreen, but use state above)
   const styles = StyleSheet.create({
@@ -288,7 +287,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
               setBrandInputText(text);
             }}
             onClear={() => {
-              console.log('[Brand] onClear - forcing remount due to clear button press');
+              Logger.log('[Brand] onClear - forcing remount due to clear button press');
               setBrand('');
               brandInputTextRef.current = '';
               setBrandInitialValue(undefined);
@@ -335,7 +334,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
               setSize(compactSize);
             }}
             onClear={() => {
-              console.log('[Size] onClear - forcing remount due to clear button press');
+              Logger.log('[Size] onClear - forcing remount due to clear button press');
               setSize('');
               sizeInputTextRef.current = '';
               setSizeInitialValue(undefined);
@@ -381,7 +380,7 @@ export default function InventoryForm({ mode = 'insert', itemData, documentId, o
               setUnitPrice(text);
             }}
             onClear={() => {
-              console.log('[Price] onClear - forcing remount due to clear button press');
+              Logger.log('[Price] onClear - forcing remount due to clear button press');
               setUnitPrice('');
               priceInputTextRef.current = '';
               setPriceInitialValue(undefined);

@@ -3,14 +3,16 @@ import i18n from '@/constants/i18n';
 
 const LanguageContext = createContext({
   lang: i18n.locale,
-  setLang: (lang: string) => {},
+  setLang: (_lang: string) => { },
 });
+
+import { Logger } from '@/utils/logger';
 
 export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
   const [lang, setLangState] = useState(i18n.locale);
 
   const setLang = useCallback((newLang: string) => {
-    console.log('[LanguageContext] setLang called with:', newLang);
+    Logger.log('[LanguageContext] setLang called with:', newLang);
     i18n.locale = newLang;
     setLangState(newLang);
   }, []);

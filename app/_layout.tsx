@@ -8,7 +8,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { LanguageProvider, useLanguage } from '@/components/LanguageContext';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Logger } from '@/utils/logger';
 import i18n from '@/constants/i18n';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -51,22 +51,22 @@ export default function RootLayout() {
       performCriticalSync()
         .then((success) => {
           if (success) {
-            console.log('[RootLayout] ✓ Critical sync completed, app ready');
+            Logger.log('[RootLayout] ✓ Critical sync completed, app ready');
             setCriticalSyncComplete(true);
             SplashScreen.hideAsync();
 
             // Start background Tier 2 & 3 sync
             startSync().catch(err => {
-              console.error('[RootLayout] Background sync failed:', err);
+              Logger.error('[RootLayout] Background sync failed:', err);
             });
           } else {
-            console.error('[RootLayout] ✗ Critical sync failed');
+            Logger.error('[RootLayout] ✗ Critical sync failed');
             setSyncError('Failed to load critical data. Please check your connection.');
             SplashScreen.hideAsync();
           }
         })
         .catch(err => {
-          console.error('[RootLayout] ✗ Critical sync error:', err);
+          Logger.error('[RootLayout] ✗ Critical sync error:', err);
           setSyncError('Failed to initialize app. Please restart.');
           SplashScreen.hideAsync();
         });

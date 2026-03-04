@@ -10,6 +10,7 @@ import { useLanguage } from '@/components/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import QRScannerWithBox from '@/components/QRScannerWithBox';
 import ThemedButton from '@/components/ThemedButton';
+import { Logger } from '@/utils/logger';
 
 interface PendingTire {
     id: string;
@@ -48,7 +49,7 @@ export default function LocationTrackingScreen() {
             }
         };
         checkPermissions();
-    }, [permissionsLoading, canAccess]);
+    }, [permissionsLoading, canAccess, lang, router]);
 
     const isDuplicateScan = (qrCode: string): boolean => {
         const now = Date.now();
@@ -186,7 +187,7 @@ export default function LocationTrackingScreen() {
 
                     return { success: true, sequence: tire.sequence };
                 } catch (error) {
-                    console.error(`Failed to update tire ${tire.sequence}:`, error);
+                    Logger.error(`Failed to update tire ${tire.sequence}:`, error);
                     return { success: false, sequence: tire.sequence, error };
                 }
             });
@@ -226,7 +227,7 @@ export default function LocationTrackingScreen() {
             setProcessingStatus('idle');
 
         } catch (error) {
-            console.error('Failed to update locations:', error);
+            Logger.error('Failed to update locations:', error);
             Alert.alert(
                 i18n.t('error', { locale: lang }),
                 i18n.t('failedToUpdateLocation', { locale: lang })

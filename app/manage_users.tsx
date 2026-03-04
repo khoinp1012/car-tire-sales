@@ -23,6 +23,7 @@ import { getUserRole, setUserRole } from '@/utils/userRoleService';
 import { getActivePermissionConfig } from '@/utils/permissionService';
 import { useQueryClient } from '@tanstack/react-query';
 import { PERMISSION_KEYS } from '@/hooks/usePermissions';
+import { Logger } from '@/utils/logger';
 
 interface UserWithRole {
     $id: string;
@@ -40,33 +41,7 @@ export default function ManageUsersScreen() {
     const [isAdmin, setIsAdmin] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        checkAdminAccess();
-    }, []);
-
-    const checkAdminAccess = async () => {
-        try {
-            const user = await account.get();
-            const userRole = await getUserRole(user.$id);
-
-            if (userRole !== 'admin') {
-                Alert.alert(
-                    'Access Denied',
-                    'Only administrators can manage users.',
-                    [{ text: 'OK', onPress: () => router.back() }]
-                );
-                return;
-            }
-
-            setIsAdmin(true);
-            await loadData();
-        } catch (error) {
-            Alert.alert('Error', 'Failed to verify admin access');
-            router.back();
-        }
-    };
-
-    const loadData = async () => {
+    const loadData = React.useCallback(async () => {
         try {
             setLoading(true);
 
@@ -99,12 +74,39 @@ export default function ManageUsersScreen() {
 
             setUsers(usersWithRoles);
         } catch (error) {
-            console.error('Error loading users:', error);
+            Logger.error('Error loading users:', error);
             Alert.alert('Error', 'Failed to load users');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    const checkAdminAccess = React.useCallback(async () => {
+        try {
+            const user = await account.get();
+            const userRole = await getUserRole(user.$id);
+
+            if (userRole !== 'admin') {
+                Alert.alert(
+                    'Access Denied',
+                    'Only administrators can manage users.',
+                    [{ text: 'OK', onPress: () => router.back() }]
+                );
+                return;
+            }
+
+            setIsAdmin(true);
+            await loadData();
+        } catch (error) {
+            Logger.error('Error verifying admin access:', error);
+            Alert.alert('Error', 'Failed to verify admin access');
+            router.back();
+        }
+    }, [router, loadData]);
+
+    useEffect(() => {
+        checkAdminAccess();
+    }, [checkAdminAccess]);
 
     const handleChangeUserRole = async (userId: string, newRole: string) => {
         Alert.alert(

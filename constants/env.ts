@@ -9,6 +9,8 @@
  * in client-side code when using Expo.
  */
 
+import { Logger } from '@/utils/logger';
+
 /**
  * Environment variable configuration object
  * Provides structured, type-safe access to all environment variables
@@ -83,11 +85,11 @@ export function validateEnv(): void {
             '💡 See .env.example for a template with all required variables.',
         ].join('\n');
 
-        console.error(errorMessage);
+        Logger.error(errorMessage);
         throw new Error(`Missing ${missing.length} required environment variable(s)`);
     }
 
-    console.log('✅ All required environment variables are present');
+    Logger.log('✅ All required environment variables are present');
 }
 
 /**
@@ -101,20 +103,20 @@ export function logEnvConfig(maskSensitive: boolean = true): void {
         return `${value.substring(0, 4)}...${value.substring(value.length - 4)}`;
     };
 
-    console.log('📋 Environment Configuration:');
-    console.log('  Appwrite:');
-    console.log(`    Endpoint: ${ENV.APPWRITE.ENDPOINT}`);
-    console.log(`    Project ID: ${mask(ENV.APPWRITE.PROJECT_ID)}`);
-    console.log(`    Database ID: ${mask(ENV.APPWRITE.DATABASE_ID)}`);
-    console.log('  Collections:');
-    console.log(`    Inventory: ${mask(ENV.COLLECTIONS.INVENTORY)}`);
-    console.log(`    Customers: ${mask(ENV.COLLECTIONS.CUSTOMERS)}`);
-    console.log(`    Sales: ${mask(ENV.COLLECTIONS.SALES)}`);
-    console.log(`    Autofill: ${mask(ENV.COLLECTIONS.AUTOFILL)}`);
-    console.log(`    User Roles: ${ENV.COLLECTIONS.USER_ROLES}`);
-    console.log('  App:');
-    console.log(`    Name: ${ENV.APP.NAME}`);
-    console.log(`    Deep Link: ${ENV.APP.DEEP_LINK_SCHEME}`);
+    Logger.log('📋 Environment Configuration:');
+    Logger.log('  Appwrite:');
+    Logger.log(`    Endpoint: ${ENV.APPWRITE.ENDPOINT}`);
+    Logger.log(`    Project ID: ${mask(ENV.APPWRITE.PROJECT_ID)}`);
+    Logger.log(`    Database ID: ${mask(ENV.APPWRITE.DATABASE_ID)}`);
+    Logger.log('  Collections:');
+    Logger.log(`    Inventory: ${mask(ENV.COLLECTIONS.INVENTORY)}`);
+    Logger.log(`    Customers: ${mask(ENV.COLLECTIONS.CUSTOMERS)}`);
+    Logger.log(`    Sales: ${mask(ENV.COLLECTIONS.SALES)}`);
+    Logger.log(`    Autofill: ${mask(ENV.COLLECTIONS.AUTOFILL)}`);
+    Logger.log(`    User Roles: ${ENV.COLLECTIONS.USER_ROLES}`);
+    Logger.log('  App:');
+    Logger.log(`    Name: ${ENV.APP.NAME}`);
+    Logger.log(`    Deep Link: ${ENV.APP.DEEP_LINK_SCHEME}`);
 }
 
 // Validate environment on module load (only in development)
@@ -122,6 +124,6 @@ if (__DEV__) {
     try {
         validateEnv();
     } catch (error) {
-        console.warn('⚠️ Environment validation failed:', error);
+        Logger.warn('⚠️ Environment validation failed:', error);
     }
 }

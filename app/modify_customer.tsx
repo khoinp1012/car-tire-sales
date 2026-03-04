@@ -5,6 +5,7 @@ import { Databases, Query } from 'react-native-appwrite';
 import appwrite, { DATABASE_ID, CUSTOMERS_COLLECTION_ID } from '@/constants/appwrite';
 import CustomerForm from '@/components/forms/CustomerForm';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Logger } from '@/utils/logger';
 import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
 import { QR_PREFIXES } from '@/constants/config';
@@ -23,16 +24,7 @@ function ModifyCustomerContent(props: any) {
   // Get customer reference from navigation params
   const customerRef = params.customerRef as string || params.scanned as string;
 
-  useEffect(() => {
-    if (customerRef) {
-      fetchCustomerData(customerRef);
-    } else {
-      setError(i18n.t('noCustomerReferenceProvided', { locale: lang }));
-      setLoading(false);
-    }
-  }, [customerRef]);
-
-  const fetchCustomerData = async (refValue: string) => {
+  const fetchCustomerData = React.useCallback(async (refValue: string) => {
     try {
       setLoading(true);
       const databases = new Databases(appwrite);
@@ -73,12 +65,21 @@ function ModifyCustomerContent(props: any) {
         setError(i18n.t('noCustomerFound', { locale: lang, reference: refValue }));
       }
     } catch (e) {
-      console.error('Error fetching customer data:', e);
+      Logger.error('Error fetching customer data:', e);
       setError(i18n.t('failedToFetchCustomer', { locale: lang }));
     } finally {
       setLoading(false);
     }
-  };
+  }, [lang]);
+
+  useEffect(() => {
+    if (customerRef) {
+      fetchCustomerData(customerRef);
+    } else {
+      setError(i18n.t('noCustomerReferenceProvided', { locale: lang }));
+      setLoading(false);
+    }
+  }, [customerRef, fetchCustomerData, lang]);
 
   if (loading) {
     return (

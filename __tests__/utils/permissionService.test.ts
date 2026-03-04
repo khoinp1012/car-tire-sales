@@ -51,8 +51,8 @@ import {
     getUserPermissionContext,
     canAccessCollection,
     canAccessRoute,
-    hasFeature,
     generateDocumentPermissions
+
 } from '@/utils/permissionService';
 import { getDatabase } from '@/utils/databaseService';
 import { getUserRole } from '@/utils/userRoleService';

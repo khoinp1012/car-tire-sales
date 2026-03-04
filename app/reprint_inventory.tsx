@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, TouchableOpacity, TextInput } from 'react-native';
 import { AutocompleteDropdown, AutocompleteDropdownContextProvider } from 'react-native-autocomplete-dropdown';
 import ThemedButton from '../components/ThemedButton';
-import { useRouter } from 'expo-router';
+
+
 import appwrite, { DATABASE_ID, INVENTORY_COLLECTION_ID } from '../constants/appwrite';
 import { Databases, Query } from 'react-native-appwrite';
 import { formatTireSize } from '../utils/tireSizeFormatter';
 import {
   setupThermalPrinter,
   printInventoryLabel,
-  printThermalQR,
-  printThermalText,
   type ThermalDevice
 } from '../utils/thermalPrinterService';
 import QRCode from 'react-native-qrcode-svg';
@@ -19,6 +18,7 @@ import { useLanguage } from '../components/LanguageContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { usePermissions } from '@/hooks/usePermissions';
 import { QR_PREFIXES } from '@/constants/config';
+import { Logger } from '@/utils/logger';
 
 // Type for inventory item
 interface InventoryItem {
@@ -35,8 +35,8 @@ const LAST_N = 10;
 
 const ReprintInventoryContent: React.FC = () => {
   const { lang } = useLanguage();
-  const { permissions } = usePermissions();
-  const router = useRouter();
+  usePermissions();
+
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,69 +48,8 @@ const ReprintInventoryContent: React.FC = () => {
   const qrRefs = useRef<{ [seq: number]: any }>({});
   const [customSequence, setCustomSequence] = useState('');
 
-  // Load data on mount
-  useEffect(() => {
-    fetchLastInventory();
-    initializePrinter();
-  }, []);
   // Print directly from input
-  const handlePrintCustomSequence = async () => {
-    if (!customSequence) {
-      console.log('[DEBUG] No custom sequence entered');
-      return;
-    }
-
-    console.log('=== CUSTOM SEQUENCE PRINT DEBUG ===');
-    console.log('Custom sequence:', customSequence);
-
-    try {
-      const databases = new Databases(appwrite);
-      const result = await databases.listDocuments(DATABASE_ID, INVENTORY_COLLECTION_ID, [
-        Query.equal('sequence', parseInt(customSequence))
-      ]);
-
-      console.log('Database query result:', {
-        documentsFound: result.documents.length,
-        documents: result.documents
-      });
-
-      if (result.documents.length > 0) {
-        const doc = result.documents[0];
-        console.log('Found inventory document:', doc);
-
-        // Register QR ref for this sequence
-        setTimeout(() => {
-          if (!qrRefs.current[doc.sequence]) {
-            console.log('[DEBUG] QR code ref not ready for custom sequence');
-            Alert.alert(i18n.t('error', { locale: lang }), i18n.t('qrCodeNotReady', { locale: lang }));
-            return;
-          }
-          console.log('[DEBUG] Calling handlePrint for custom sequence:', doc.sequence);
-          handlePrint({
-            sequence: doc.sequence,
-            brand: doc.brand,
-            size: doc.size,
-            unit_price: doc.unit_price,
-            radius_size: doc.radius_size,
-            ...doc
-          });
-        }, 100); // Give QRCode a moment to render
-      } else {
-        console.log('[DEBUG] No inventory found for sequence:', customSequence);
-        Alert.alert(i18n.t('noDataFound', { locale: lang }), `${i18n.t('noDataFound', { locale: lang })} ${customSequence}`);
-      }
-    } catch (e) {
-      console.error('[DEBUG] Error fetching custom sequence:', e);
-      Alert.alert('Error', i18n.t('failedToFetchInventoryForCustomSequence', { locale: lang }));
-    }
-  };
-
-  useEffect(() => {
-    fetchLastInventory();
-    initializePrinter();
-  }, []);
-
-  const fetchLastInventory = async () => {
+  const fetchLastInventory = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -130,20 +69,20 @@ const ReprintInventoryContent: React.FC = () => {
         ...doc
       })));
     } catch (e: any) {
-      console.error('[ReprintInventoryScreen] Failed to fetch inventory:', e);
+      Logger.error('[ReprintInventoryScreen] Failed to fetch inventory:', e);
       setError(i18n.t('failedToFetchInventory', { locale: lang }));
     } finally {
       setLoading(false);
     }
-  };
+  }, [lang]);
 
-  const initializePrinter = async () => {
-    console.log('=== INITIALIZING PRINTER ===');
+  const initializePrinter = React.useCallback(async () => {
+    Logger.log('=== INITIALIZING PRINTER ===');
     setPrinterDebug('Setting up thermal printer...');
 
     const result = await setupThermalPrinter(setPrinterDebug);
 
-    console.log('Printer setup result:', {
+    Logger.log('Printer setup result:', {
       success: result.success,
       devicesCount: result.devices.length,
       devices: result.devices
@@ -153,11 +92,11 @@ const ReprintInventoryContent: React.FC = () => {
       setPrinterDevices(result.devices);
       const message = `Found ${result.devices.length} thermal printer(s)`;
       setPrinterDebug(message);
-      console.log('[PRINTER INIT]', message);
+      Logger.log('[PRINTER INIT]', message);
 
       // Log each device for debugging
       result.devices.forEach((device, index) => {
-        console.log(`[PRINTER INIT] Device ${index + 1}:`, {
+        Logger.log(`[PRINTER INIT] Device ${index + 1}:`, {
           name: device.device_name || device.name,
           mac: device.inner_mac_address,
           fullDevice: device
@@ -165,19 +104,19 @@ const ReprintInventoryContent: React.FC = () => {
       });
     } else {
       setPrinterDebug('Failed to setup thermal printer');
-      console.log('[PRINTER INIT] Setup failed');
+      Logger.log('[PRINTER INIT] Setup failed');
     }
     setDropdownResetKey(k => k + 1);
-  };
+  }, []);
 
-  const handlePrint = async (item: InventoryItem) => {
+  const handlePrint = React.useCallback(async (item: InventoryItem) => {
     // Debug print for emulator: print all relevant values for verification
     const qrValue = `${QR_PREFIXES.INVENTORY}${item.sequence}`;
     const qrRef = qrRefs.current[item.sequence];
 
     // Enhanced console logging for emulator testing
-    console.log('=== REPRINT INVENTORY LABEL DEBUG ===');
-    console.log('Print data:', {
+    Logger.log('=== REPRINT INVENTORY LABEL DEBUG ===');
+    Logger.log('Print data:', {
       sequence: item.sequence,
       brand: item.brand,
       size: item.size,
@@ -186,7 +125,7 @@ const ReprintInventoryContent: React.FC = () => {
       qrValue: qrValue,
       fullItem: item
     });
-    console.log('Print settings:', {
+    Logger.log('Print settings:', {
       enablePrint,
       selectedPrinter: selectedPrinter ? {
         name: selectedPrinter.device_name || selectedPrinter.name,
@@ -197,33 +136,33 @@ const ReprintInventoryContent: React.FC = () => {
     });
 
     // Simulated print output for emulator testing
-    console.log('=== SIMULATED PRINT OUTPUT ===');
-    console.log('INVENTORY LABEL');
-    console.log('================');
-    console.log(`Sequence: ${item.sequence}`);
-    console.log(`Brand: ${item.brand}`);
-    console.log(`Size: ${item.size}`);
-    if (item.unit_price) console.log(`Unit Price: ${item.unit_price.toLocaleString()}`);
-    if (item.radius_size) console.log(`Radius: ${item.radius_size}`);
-    console.log('================');
-    console.log(`QR Code: ${qrValue}`);
-    console.log('=================================');
+    Logger.log('=== SIMULATED PRINT OUTPUT ===');
+    Logger.log('INVENTORY LABEL');
+    Logger.log('================');
+    Logger.log(`Sequence: ${item.sequence}`);
+    Logger.log(`Brand: ${item.brand}`);
+    Logger.log(`Size: ${item.size}`);
+    if (item.unit_price) Logger.log(`Unit Price: ${item.unit_price.toLocaleString()}`);
+    if (item.radius_size) Logger.log(`Radius: ${item.radius_size}`);
+    Logger.log('================');
+    Logger.log(`QR Code: ${qrValue}`);
+    Logger.log('=================================');
 
     if (!enablePrint) {
-      console.log('[DEBUG] Print disabled - would show alert');
+      Logger.log('[DEBUG] Print disabled - would show alert');
       Alert.alert(i18n.t('printDisabled', { locale: lang }), i18n.t('enablePrintToSendToPrinter', { locale: lang }));
       return;
     }
 
     if (!selectedPrinter) {
-      console.log('[DEBUG] No printer selected - printing debug info only');
-      console.log('[DEBUG] Print data would be sent to printer if one was selected');
+      Logger.log('[DEBUG] No printer selected - printing debug info only');
+      Logger.log('[DEBUG] Print data would be sent to printer if one was selected');
       Alert.alert(i18n.t('noPrinters', { locale: lang }), i18n.t('selectPrinter', { locale: lang }));
       return;
     }
 
     if (!qrRef) {
-      console.log('[DEBUG] QR ref not available - would show alert');
+      Logger.log('[DEBUG] QR ref not available - would show alert');
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('qrCodeNotReady', { locale: lang }));
       return;
     }
@@ -238,7 +177,7 @@ const ReprintInventoryContent: React.FC = () => {
         radiusSize: item.radius_size || ''
       };
 
-      console.log('[DEBUG] Calling printInventoryLabel with:', inventoryData);
+      Logger.log('[DEBUG] Calling printInventoryLabel with:', inventoryData);
 
       const success = await printInventoryLabel(
         selectedPrinter,
@@ -248,21 +187,77 @@ const ReprintInventoryContent: React.FC = () => {
       );
 
       if (success) {
-        console.log('[DEBUG] Print successful');
+        Logger.log('[DEBUG] Print successful');
         Alert.alert(i18n.t('success', { locale: lang }), i18n.t('printLabelSent', { locale: lang }));
       } else {
-        console.log('[DEBUG] Print failed - no success returned');
+        Logger.log('[DEBUG] Print failed - no success returned');
       }
     } catch (e: any) {
-      console.error('[ReprintInventoryScreen] Print failed:', e);
-      console.log('[DEBUG] Print error details:', {
+      Logger.error('[ReprintInventoryScreen] Print failed:', e);
+      Logger.log('[DEBUG] Print error details:', {
         name: e.name,
         message: e.message,
         stack: e.stack
       });
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToPrintLabel', { locale: lang }));
     }
-  };
+  }, [enablePrint, selectedPrinter, printerDevices.length, lang]);
+
+  const handlePrintCustomSequence = React.useCallback(async () => {
+    if (!customSequence) {
+      Logger.log('[DEBUG] No custom sequence entered');
+      return;
+    }
+
+    Logger.log('=== CUSTOM SEQUENCE PRINT DEBUG ===');
+    Logger.log('Custom sequence:', customSequence);
+
+    try {
+      const databases = new Databases(appwrite);
+      const result = await databases.listDocuments(DATABASE_ID, INVENTORY_COLLECTION_ID, [
+        Query.equal('sequence', parseInt(customSequence))
+      ]);
+
+      Logger.log('Database query result:', {
+        documentsFound: result.documents.length,
+        documents: result.documents
+      });
+
+      if (result.documents.length > 0) {
+        const doc = result.documents[0];
+        Logger.log('Found inventory document:', doc);
+
+        // Register QR ref for this sequence
+        setTimeout(() => {
+          if (!qrRefs.current[doc.sequence]) {
+            Logger.log('[DEBUG] QR code ref not ready for custom sequence');
+            Alert.alert(i18n.t('error', { locale: lang }), i18n.t('qrCodeNotReady', { locale: lang }));
+            return;
+          }
+          Logger.log('[DEBUG] Calling handlePrint for custom sequence:', doc.sequence);
+          handlePrint({
+            sequence: doc.sequence,
+            brand: doc.brand,
+            size: doc.size,
+            unit_price: doc.unit_price,
+            radius_size: doc.radius_size,
+            ...doc
+          });
+        }, 100); // Give QRCode a moment to render
+      } else {
+        Logger.log('[DEBUG] No inventory found for sequence:', customSequence);
+        Alert.alert(i18n.t('noDataFound', { locale: lang }), `${i18n.t('noDataFound', { locale: lang })} ${customSequence}`);
+      }
+    } catch (e) {
+      Logger.error('[DEBUG] Error fetching custom sequence:', e);
+      Alert.alert('Error', i18n.t('failedToFetchInventoryForCustomSequence', { locale: lang }));
+    }
+  }, [customSequence, lang, handlePrint]);
+
+  useEffect(() => {
+    fetchLastInventory();
+    initializePrinter();
+  }, [fetchLastInventory, initializePrinter]);
 
   if (loading) return <Text style={styles.infoText}>{i18n.t('loading', { locale: lang })}</Text>;
   if (error) return <Text style={styles.errorText}>{error}</Text>;
@@ -349,14 +344,14 @@ const ReprintInventoryContent: React.FC = () => {
                     try {
                       const device = JSON.parse(item.id);
                       setSelectedPrinter(device);
-                      console.log('[ReprintInventoryScreen] Printer selected:', device);
+                      Logger.log('[ReprintInventoryScreen] Printer selected:', device);
                     } catch (e) {
                       setSelectedPrinter(null);
-                      console.error('[ReprintInventoryScreen] Error parsing selected printer:', e);
+                      Logger.error('[ReprintInventoryScreen] Error parsing selected printer:', e);
                     }
                   } else {
                     setSelectedPrinter(null);
-                    console.log('[ReprintInventoryScreen] Printer deselected');
+                    Logger.log('[ReprintInventoryScreen] Printer deselected');
                   }
                 }}
                 textInputProps={{

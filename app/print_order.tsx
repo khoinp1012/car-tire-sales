@@ -13,10 +13,9 @@ import {
 import { Databases, Query } from 'react-native-appwrite';
 import * as Print from 'expo-print';
 import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import appwrite, { DATABASE_ID, SALES_COLLECTION_ID, CUSTOMERS_COLLECTION_ID } from '@/constants/appwrite';
-import ThemedButton from '@/components/ThemedButton';
+import { Logger } from '@/utils/logger';
 import { useRouter } from 'expo-router';
 import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
@@ -27,8 +26,8 @@ import {
   formatVNCurrency,
   formatVNDate,
   generateInvoiceNumber,
-  generatePDFFilename,
-  getPDFSuccessMessage
+  generatePDFFilename
+
 } from '@/utils/invoiceUtils';
 import { saveToAndroidDownloads } from '@/utils/androidDownloadManager';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -230,13 +229,10 @@ function PrintOrderContent() {
   const [printingOrderId, setPrintingOrderId] = useState<string | null>(null);
   const [selectedTemplates, setSelectedTemplates] = useState<{ [orderId: string]: TemplateType }>({});
   const { lang } = useLanguage();
-  const router = useRouter();
+  useRouter();
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
 
-  const loadOrders = async () => {
+  const loadOrders = React.useCallback(async () => {
     try {
       setLoading(true);
       const databases = new Databases(appwrite);
@@ -258,7 +254,7 @@ function PrintOrderContent() {
           const customer = await databases.getDocument(DATABASE_ID, CUSTOMERS_COLLECTION_ID, customerId);
           return customer as unknown as Customer;
         } catch (error) {
-          console.warn(`Failed to load customer ${customerId}:`, error);
+          Logger.warn(`Failed to load customer ${customerId}:`, error);
           return null;
         }
       });
@@ -273,22 +269,26 @@ function PrintOrderContent() {
 
       setCustomers(customersMap);
     } catch (error) {
-      console.error('Error loading orders:', error);
+      Logger.error('Error loading orders:', error);
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToLoadOrders', { locale: lang }));
     } finally {
       setLoading(false);
     }
-  };
+  }, [lang]);
 
-  const formatCurrency = (amount: number) => {
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  const formatCurrency = React.useCallback((amount: number) => {
     return formatVNCurrency(amount);
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = React.useCallback((dateString: string) => {
     return formatVNDate(dateString);
-  };
+  }, []);
 
-  const generateInvoiceHTML = async (order: SalesOrder, customer: Customer, templateType: TemplateType): Promise<string> => {
+  const generateInvoiceHTML = React.useCallback(async (order: SalesOrder, customer: Customer, templateType: TemplateType): Promise<string> => {
     try {
       // Parse inventory items
       const items: InventoryItem[] = JSON.parse(order.inventory_items_list);
@@ -313,17 +313,17 @@ function PrintOrderContent() {
       };
 
       // Generate HTML from template using the specified template type
-      console.log(`📄 Using template type: ${templateType}`);
+      Logger.log(`📄 Using template type: ${templateType}`);
       const htmlContent = await generateInvoiceHTMLFromTemplate(templateData, templateType);
 
       return htmlContent;
     } catch (error) {
-      console.error('Error generating invoice HTML:', error);
+      Logger.error('Error generating invoice HTML:', error);
       throw error;
     }
-  };
+  }, [formatCurrency, formatDate]);
 
-  const printOrder = async (order: SalesOrder) => {
+  const printOrder = React.useCallback(async (order: SalesOrder) => {
     const customer = customers[order.customer_id];
     if (!customer) {
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('customerInfoNotFound', { locale: lang }));
@@ -355,10 +355,9 @@ function PrintOrderContent() {
         to: documentPath,
       });
 
-      console.log('PDF created at:', documentPath);
+      Logger.log('PDF created at:', documentPath);
 
       // For Android, use Storage Access Framework to save to Downloads
-      let downloadsPath: string | null = null;
       let savedToDownloads = false;
 
       if (Platform.OS === 'android') {
@@ -367,15 +366,14 @@ function PrintOrderContent() {
           const result = await saveToAndroidDownloads(documentPath, filename);
 
           if (result.success && result.path) {
-            downloadsPath = result.path;
             savedToDownloads = true;
-            console.log('PDF saved to Downloads via SAF:', result.path);
+            Logger.log('PDF saved to Downloads via SAF:', result.path);
           } else {
-            console.log('SAF save failed or cancelled:', result.error);
+            Logger.log('SAF save failed or cancelled:', result.error);
             // File is still available in app directory for sharing
           }
         } catch (error) {
-          console.log('Error using SAF, file remains in app directory:', error);
+          Logger.log('Error using SAF, file remains in app directory:', error);
           // Continue - file is still in app directory
         }
       }
@@ -407,7 +405,7 @@ function PrintOrderContent() {
               });
             }
           } catch (error) {
-            console.error('Error sharing PDF:', error);
+            Logger.error('Error sharing PDF:', error);
             Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToSharePDF', { locale: lang }));
           }
         },
@@ -429,7 +427,7 @@ function PrintOrderContent() {
                 Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToSaveToDownloads', { locale: lang }));
               }
             } catch (error) {
-              console.error('Error saving to Downloads:', error);
+              Logger.error('Error saving to Downloads:', error);
               Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToSaveToDownloads', { locale: lang }));
             }
           }
@@ -442,14 +440,14 @@ function PrintOrderContent() {
       Alert.alert(i18n.t('success', { locale: lang }), successMessage, alertButtons);
 
     } catch (error) {
-      console.error('Error printing order:', error);
+      Logger.error('Error printing order:', error);
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToCreatePDF', { locale: lang }));
     } finally {
       setPrintingOrderId(null);
     }
-  };
+  }, [customers, selectedTemplates, lang, generateInvoiceHTML]);
 
-  const renderOrder = (order: SalesOrder) => {
+  const renderOrder = React.useCallback((order: SalesOrder) => {
     const customer = customers[order.customer_id];
     if (!customer) return null;
 
@@ -457,7 +455,7 @@ function PrintOrderContent() {
     try {
       items = JSON.parse(order.inventory_items_list);
     } catch (error) {
-      console.warn('Failed to parse items for order:', order.$id);
+      Logger.warn('Failed to parse items for order:', order.$id);
     }
 
     const subtotal = items.reduce((sum, item) => sum + (item.unit_price || 0), 0);
@@ -562,7 +560,7 @@ function PrintOrderContent() {
         </View>
       </View>
     );
-  };
+  }, [customers, printingOrderId, selectedTemplates, lang, formatCurrency, formatDate, printOrder]);
 
   if (loading) {
     return (

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
 import { AutocompleteDropdown, AutocompleteDropdownContextProvider } from 'react-native-autocomplete-dropdown';
 import ThemedButton from '../components/ThemedButton';
-import appwrite, { DATABASE_ID, INVENTORY_COLLECTION_ID } from '../constants/appwrite';
-import { Databases, Query } from 'react-native-appwrite';
+
+
 import { getAutofillValues } from '../utils/autofill';
 import { formatVNCurrency } from '../utils/invoiceUtils';
 import { formatTireSize } from '../utils/tireSizeFormatter';
@@ -11,7 +11,9 @@ import i18n from '../constants/i18n';
 import { useLanguage } from '../components/LanguageContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useRouter } from 'expo-router';
+
+
+import { Logger } from '@/utils/logger';
 
 // Type for inventory item
 interface InventoryItem {
@@ -26,10 +28,45 @@ interface InventoryItem {
   [key: string]: any;
 }
 
+// Custom filter functions (pure utility)
+const customFilter = (options: string[], inputText: string) => {
+  if (!inputText) {
+    // If no input, return all options
+    return options.map(opt => ({
+      id: opt,
+      title: opt
+    }));
+  }
+
+  const searchText = inputText.toLowerCase().trim();
+
+  // Filter existing options that match the input
+  const filtered = options.filter(opt =>
+    opt.toLowerCase().includes(searchText)
+  ).map(opt => ({
+    id: opt,
+    title: opt
+  }));
+
+  // Always include the current input as a selectable option (for custom entries)
+  const exactMatch = options.find(opt =>
+    opt.toLowerCase() === searchText
+  );
+
+  if (!exactMatch && inputText.trim()) {
+    // Add the custom input as the first option
+    filtered.unshift({
+      id: inputText,
+      title: inputText
+    });
+  }
+
+  return filtered;
+};
+
 const FindInventoryContent: React.FC = () => {
   const { lang } = useLanguage();
-  const { permissions } = usePermissions();
-  const router = useRouter();
+  usePermissions();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,45 +100,33 @@ const FindInventoryContent: React.FC = () => {
 
   const [dropdownResetKey, setDropdownResetKey] = useState(0);
 
+  const loadAutofillData = React.useCallback(async () => {
+    try {
+      Logger.log('[FindInventoryScreen] Loading autofill data...');
+
+      // Load brand options from autofill (store as string array)
+      const brands = await getAutofillValues('brand', 'inventory_items');
+      setBrandOptions(brands);
+
+      // Load radius options from autofill (store as string array)
+      const radiuses = await getAutofillValues('radius_size', 'inventory_items');
+      setRadiusOptions(radiuses);
+
+      Logger.log('[FindInventoryScreen] Autofill data loaded:', {
+        brands: brands.length,
+        radiuses: radiuses.length
+      });
+
+      setDropdownResetKey(k => k + 1);
+    } catch (e) {
+      Logger.error('[FindInventoryScreen] Failed to load autofill data:', e);
+      Alert.alert('Error', i18n.t('failedToLoadSearchOptions', { locale: lang }));
+    }
+  }, [lang]);
+
   useEffect(() => {
     loadAutofillData();
-  }, []);
-
-  // Custom filter functions (from insert_inventory pattern)
-  const customFilter = (options: string[], inputText: string) => {
-    if (!inputText) {
-      // If no input, return all options
-      return options.map(opt => ({
-        id: opt,
-        title: opt
-      }));
-    }
-
-    const searchText = inputText.toLowerCase().trim();
-
-    // Filter existing options that match the input
-    const filtered = options.filter(opt =>
-      opt.toLowerCase().includes(searchText)
-    ).map(opt => ({
-      id: opt,
-      title: opt
-    }));
-
-    // Always include the current input as a selectable option (for custom entries)
-    const exactMatch = options.find(opt =>
-      opt.toLowerCase() === searchText
-    );
-
-    if (!exactMatch && inputText.trim()) {
-      // Add the custom input as the first option
-      filtered.unshift({
-        id: inputText,
-        title: inputText
-      });
-    }
-
-    return filtered;
-  };
+  }, [loadAutofillData]);
 
   // Update filtered options when base options or input text changes
   useEffect(() => {
@@ -112,31 +137,7 @@ const FindInventoryContent: React.FC = () => {
     setFilteredRadiusOptions(customFilter(radiusOptions, radiusInputText));
   }, [radiusOptions, radiusInputText]);
 
-  const loadAutofillData = async () => {
-    try {
-      console.log('[FindInventoryScreen] Loading autofill data...');
-
-      // Load brand options from autofill (store as string array)
-      const brands = await getAutofillValues('brand', 'inventory_items');
-      setBrandOptions(brands);
-
-      // Load radius options from autofill (store as string array)
-      const radiuses = await getAutofillValues('radius_size', 'inventory_items');
-      setRadiusOptions(radiuses);
-
-      console.log('[FindInventoryScreen] Autofill data loaded:', {
-        brands: brands.length,
-        radiuses: radiuses.length
-      });
-
-      setDropdownResetKey(k => k + 1);
-    } catch (e) {
-      console.error('[FindInventoryScreen] Failed to load autofill data:', e);
-      Alert.alert('Error', i18n.t('failedToLoadSearchOptions', { locale: lang }));
-    }
-  };
-
-  const searchInventory = async () => {
+  const searchInventory = React.useCallback(async () => {
     if (!selectedBrand && !selectedRadius) {
       Alert.alert(i18n.t('searchCriteriaRequired', { locale: lang }), i18n.t('pleaseSelectBrandOrRadius', { locale: lang }));
       return;
@@ -147,15 +148,13 @@ const FindInventoryContent: React.FC = () => {
     setSearchPerformed(true);
 
     try {
-      console.log('[FindInventoryScreen] Starting search:', {
+      Logger.log('[FindInventoryScreen] Starting search:', {
         selectedBrand,
         selectedRadius
       });
 
-      const databases = new Databases(appwrite);
-      const queries = [
-        Query.equal('sold', false), // Only unsold items
-      ];
+
+
 
       // Add brand filter if selected
       const searchFilters: any = {};
@@ -169,13 +168,13 @@ const FindInventoryContent: React.FC = () => {
         searchFilters.radiusSize = parseInt(selectedRadius);
       }
 
-      console.log('[FindInventoryScreen] Searching LOCAL DB with filters:', searchFilters);
+      Logger.log('[FindInventoryScreen] Searching LOCAL DB with filters:', searchFilters);
 
       // Search using local WatermelonDB (OFFLINE-FIRST)
       const { inventoryService } = await import('@/utils/inventoryService');
       const results = await inventoryService.searchItems(searchFilters);
 
-      console.log('[FindInventoryScreen] Search completed from LOCAL DB:', {
+      Logger.log('[FindInventoryScreen] Search completed from LOCAL DB:', {
         totalFound: results.length
       });
 
@@ -194,15 +193,15 @@ const FindInventoryContent: React.FC = () => {
       setItems(inventoryItems);
 
     } catch (e: any) {
-      console.error('[FindInventoryScreen] Search failed:', e);
+      Logger.error('[FindInventoryScreen] Search failed:', e);
       setError(i18n.t('failedToSearchInventory', { locale: lang }));
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToSearchInventory', { locale: lang }));
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedBrand, selectedRadius, lang]);
 
-  const clearSearch = () => {
+  const clearSearch = React.useCallback(() => {
     setSelectedBrand('');
     setSelectedRadius('');
     brandInputTextRef.current = '';
@@ -215,9 +214,9 @@ const FindInventoryContent: React.FC = () => {
     setError(null);
     setSearchPerformed(false);
     setDropdownResetKey(k => k + 1);
-  };
+  }, []);
 
-  const renderInventoryItem = ({ item }: { item: InventoryItem }) => (
+  const renderInventoryItem = React.useCallback(({ item }: { item: InventoryItem }) => (
     <View style={styles.itemRow}>
       <View style={styles.itemInfo}>
         <Text style={styles.itemText}>{i18n.t('seq', { locale: lang })}: {item.sequence}</Text>
@@ -226,7 +225,7 @@ const FindInventoryContent: React.FC = () => {
         <Text style={styles.itemSubText}>{i18n.t('price', { locale: lang })}: {item.unit_price ? formatVNCurrency(item.unit_price) + ' VND' : 'N/A'}</Text>
       </View>
     </View>
-  );
+  ), [lang]);
 
   return (
     <AutocompleteDropdownContextProvider>
@@ -265,7 +264,7 @@ const FindInventoryContent: React.FC = () => {
                   setBrandInitialValue(text ? { id: text, title: text } : undefined);
                 }}
                 onClear={() => {
-                  console.log('[Brand] onClear - forcing remount due to clear button press');
+                  Logger.log('[Brand] onClear - forcing remount due to clear button press');
                   setSelectedBrand('');
                   brandInputTextRef.current = '';
                   setBrandInitialValue(undefined);
@@ -312,7 +311,7 @@ const FindInventoryContent: React.FC = () => {
                   setRadiusInitialValue(text ? { id: text, title: text } : undefined);
                 }}
                 onClear={() => {
-                  console.log('[Radius] onClear - forcing remount due to clear button press');
+                  Logger.log('[Radius] onClear - forcing remount due to clear button press');
                   setSelectedRadius('');
                   radiusInputTextRef.current = '';
                   setRadiusInitialValue(undefined);

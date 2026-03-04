@@ -5,6 +5,7 @@ import appwrite, { databases, DATABASE_ID, INVENTORY_COLLECTION_ID, CUSTOMERS_CO
 import { Query } from 'react-native-appwrite';
 import NetInfo from '@react-native-community/netinfo';
 import { getCurrentUserId } from './sessionContext';
+import { Logger } from './logger';
 
 let isOfflineMode = false;
 let isSyncing = false;
@@ -50,7 +51,7 @@ export async function hasPermissionConfig(): Promise<boolean> {
 
         return configs.some((config: any) => config.isActive && !config.deleted);
     } catch (error) {
-        console.error('[SyncService] Error checking permission config:', error);
+        Logger.error('[SyncService] Error checking permission config:', error);
         return false;
     }
 }
@@ -58,24 +59,16 @@ export async function hasPermissionConfig(): Promise<boolean> {
 /**
  * Map Appwrite collection ID to WatermelonDB table name
  */
-function getTableName(appwriteCollectionId: string): string {
-    const mapping: Record<string, string> = {
-        [INVENTORY_COLLECTION_ID]: 'inventory',
-        [CUSTOMERS_COLLECTION_ID]: 'customers',
-        [SALES_COLLECTION_ID]: 'sales',
-        [USER_ROLES_COLLECTION_ID]: 'user_roles',
-        [PERMISSION_CONFIG_COLLECTION_ID]: 'permission_config',
-        [STACKS_COLLECTION_ID]: 'stacks'
-    };
-    return mapping[appwriteCollectionId] || '';
-}
+
+
 
 /**
  * Map field names from Appwrite to WatermelonDB
  * WatermelonDB sync expects raw records with column names
  */
 function mapAppwriteToLocal(doc: any, tableName: string): any {
-    const { $id, $createdAt, $updatedAt, $permissions, $databaseId, $collectionId, ...rest } = doc;
+    const { $id, $createdAt, $updatedAt, ...rest } = doc;
+
 
     const mapped: any = {
         id: $id, // WatermelonDB ID MUST be provided for sync
@@ -222,7 +215,7 @@ async function categorizePullChanges(db: any, table: string, docs: any[]) {
     const ids = docs.map(d => d.$id).filter(id => id); // Filter out undefined IDs
 
     if (ids.length === 0) {
-        console.warn('[SyncService] No valid document IDs found in batch');
+        Logger.warn('[SyncService] No valid document IDs found in batch');
         return { created: [], updated: [], deleted: [] };
     }
 
@@ -237,7 +230,7 @@ async function categorizePullChanges(db: any, table: string, docs: any[]) {
         try {
             // Validate required fields
             if (!doc.$id) {
-                console.warn('[SyncService] Document missing $id, skipping:', doc);
+                Logger.warn('[SyncService] Document missing $id, skipping:', doc);
                 skippedCount++;
                 return;
             }
@@ -246,7 +239,7 @@ async function categorizePullChanges(db: any, table: string, docs: any[]) {
 
             // Validate mapped document has required sync fields
             if (!mapped.id || mapped.version === undefined) {
-                console.warn('[SyncService] Mapped document missing required fields (id or version), skipping:', {
+                Logger.warn('[SyncService] Mapped document missing required fields (id or version), skipping:', {
                     original: doc.$id,
                     mapped: mapped
                 });
@@ -260,7 +253,7 @@ async function categorizePullChanges(db: any, table: string, docs: any[]) {
                 created.push(mapped);
             }
         } catch (error) {
-            console.error('[SyncService] Error mapping document, skipping:', {
+            Logger.error('[SyncService] Error mapping document, skipping:', {
                 docId: doc.$id,
                 table,
                 error
@@ -270,7 +263,7 @@ async function categorizePullChanges(db: any, table: string, docs: any[]) {
     });
 
     if (skippedCount > 0) {
-        console.warn(`[SyncService] Skipped ${skippedCount} documents due to errors in ${table}`);
+        Logger.warn(`[SyncService] Skipped ${skippedCount} documents due to errors in ${table}`);
     }
 
     return { created, updated, deleted: [] };
@@ -290,7 +283,7 @@ export async function performCriticalSync(): Promise<boolean> {
 
     try {
         isSyncLocked = true;
-        console.log('[SyncService] 🔴 TIER 1: Starting CRITICAL sync...');
+        Logger.log('[SyncService] 🔴 TIER 1: Starting CRITICAL sync...');
         const db = getDatabase();
         const userId = await getCurrentUserId();
 
@@ -312,9 +305,9 @@ export async function performCriticalSync(): Promise<boolean> {
                     );
 
                     changes.permission_config = await categorizePullChanges(db, 'permission_config', permissionDocs.documents);
-                    console.log('[SyncService] ✓ Synced permission_config:', permissionDocs.documents.length);
+                    Logger.log('[SyncService] ✓ Synced permission_config:', permissionDocs.documents.length);
                 } catch (error) {
-                    console.error('[SyncService] ✗ Failed to sync permission_config:', error);
+                    Logger.error('[SyncService] ✗ Failed to sync permission_config:', error);
                     changes.permission_config = { created: [], updated: [], deleted: [] };
                 }
 
@@ -331,9 +324,9 @@ export async function performCriticalSync(): Promise<boolean> {
                     );
 
                     changes.user_roles = await categorizePullChanges(db, 'user_roles', roleDocs.documents);
-                    console.log('[SyncService] ✓ Synced user_roles:', roleDocs.documents.length);
+                    Logger.log('[SyncService] ✓ Synced user_roles:', roleDocs.documents.length);
                 } catch (error) {
-                    console.error('[SyncService] ✗ Failed to sync user_roles:', error);
+                    Logger.error('[SyncService] ✗ Failed to sync user_roles:', error);
                     changes.user_roles = { created: [], updated: [], deleted: [] };
                 }
 
@@ -344,10 +337,10 @@ export async function performCriticalSync(): Promise<boolean> {
             pushChanges: async () => { } // No push during critical sync
         });
 
-        console.log('[SyncService] 🔴 TIER 1: CRITICAL sync completed');
+        Logger.log('[SyncService] 🔴 TIER 1: CRITICAL sync completed');
         return true;
     } catch (error) {
-        console.error('[SyncService] 🔴 TIER 1: CRITICAL sync failed:', error);
+        Logger.error('[SyncService] 🔴 TIER 1: CRITICAL sync failed:', error);
         return false;
     } finally {
         isSyncLocked = false;
@@ -372,7 +365,7 @@ export async function performHighPrioritySync(): Promise<void> {
 
     try {
         isSyncLocked = true;
-        console.log('[SyncService] 🟡 TIER 2: Starting HIGH PRIORITY sync (Recent data)...');
+        Logger.log('[SyncService] 🟡 TIER 2: Starting HIGH PRIORITY sync (Recent data)...');
         const db = getDatabase();
 
         const thirtyDaysAgo = new Date();
@@ -398,9 +391,9 @@ export async function performHighPrioritySync(): Promise<void> {
                     );
 
                     changes.inventory = await categorizePullChanges(db, 'inventory', inventoryDocs.documents);
-                    console.log('[SyncService] ✓ Synced inventory (recent/unsold):', inventoryDocs.documents.length);
+                    Logger.log('[SyncService] ✓ Synced inventory (recent/unsold):', inventoryDocs.documents.length);
                 } catch (error) {
-                    console.error('[SyncService] ✗ Failed to sync inventory:', error);
+                    Logger.error('[SyncService] ✗ Failed to sync inventory:', error);
                     changes.inventory = { created: [], updated: [], deleted: [] };
                 }
 
@@ -417,9 +410,9 @@ export async function performHighPrioritySync(): Promise<void> {
                     );
 
                     changes.customers = await categorizePullChanges(db, 'customers', customerDocs.documents);
-                    console.log('[SyncService] ✓ Synced customers (recent):', customerDocs.documents.length);
+                    Logger.log('[SyncService] ✓ Synced customers (recent):', customerDocs.documents.length);
                 } catch (error) {
-                    console.error('[SyncService] ✗ Failed to sync customers:', error);
+                    Logger.error('[SyncService] ✗ Failed to sync customers:', error);
                     changes.customers = { created: [], updated: [], deleted: [] };
                 }
 
@@ -430,9 +423,9 @@ export async function performHighPrioritySync(): Promise<void> {
             pushChanges: async () => { } // No push during high priority sync
         });
 
-        console.log('[SyncService] 🟡 TIER 2: HIGH PRIORITY sync completed');
+        Logger.log('[SyncService] 🟡 TIER 2: HIGH PRIORITY sync completed');
     } catch (error) {
-        console.error('[SyncService] 🟡 TIER 2: HIGH PRIORITY sync failed:', error);
+        Logger.error('[SyncService] 🟡 TIER 2: HIGH PRIORITY sync failed:', error);
     } finally {
         isSyncLocked = false;
     }
@@ -451,7 +444,7 @@ export async function performMediumPrioritySync(): Promise<void> {
 
     try {
         isSyncLocked = true;
-        console.log('[SyncService] 🟢 TIER 3: Starting MEDIUM PRIORITY sync...');
+        Logger.log('[SyncService] 🟢 TIER 3: Starting MEDIUM PRIORITY sync...');
         const db = getDatabase();
 
         const thirtyDaysAgo = new Date();
@@ -475,9 +468,9 @@ export async function performMediumPrioritySync(): Promise<void> {
                     );
 
                     changes.sales = await categorizePullChanges(db, 'sales', salesDocs.documents);
-                    console.log('[SyncService] ✓ Synced sales (recent):', salesDocs.documents.length);
+                    Logger.log('[SyncService] ✓ Synced sales (recent):', salesDocs.documents.length);
                 } catch (error) {
-                    console.error('[SyncService] ✗ Failed to sync sales:', error);
+                    Logger.error('[SyncService] ✗ Failed to sync sales:', error);
                     changes.sales = { created: [], updated: [], deleted: [] };
                 }
 
@@ -493,9 +486,9 @@ export async function performMediumPrioritySync(): Promise<void> {
                     );
 
                     changes.stacks = await categorizePullChanges(db, 'stacks', stackDocs.documents);
-                    console.log('[SyncService] ✓ Synced stacks:', stackDocs.documents.length);
+                    Logger.log('[SyncService] ✓ Synced stacks:', stackDocs.documents.length);
                 } catch (error) {
-                    console.error('[SyncService] ✗ Failed to sync stacks:', error);
+                    Logger.error('[SyncService] ✗ Failed to sync stacks:', error);
                     changes.stacks = { created: [], updated: [], deleted: [] };
                 }
 
@@ -506,9 +499,9 @@ export async function performMediumPrioritySync(): Promise<void> {
             pushChanges: async () => { } // No push during medium priority sync
         });
 
-        console.log('[SyncService] 🟢 TIER 3: MEDIUM PRIORITY sync completed');
+        Logger.log('[SyncService] 🟢 TIER 3: MEDIUM PRIORITY sync completed');
     } catch (error) {
-        console.error('[SyncService] 🟢 TIER 3: MEDIUM PRIORITY sync failed:', error);
+        Logger.error('[SyncService] 🟢 TIER 3: MEDIUM PRIORITY sync failed:', error);
     } finally {
         isSyncLocked = false;
     }
@@ -522,9 +515,9 @@ export async function performMediumPrioritySync(): Promise<void> {
 export async function performFullSync(): Promise<void> {
     if (isOfflineMode || isSyncing || isSyncLocked) return;
 
-    console.log('[SyncService] ⚪ TIER 4: Starting FULL history sync...');
+    Logger.log('[SyncService] ⚪ TIER 4: Starting FULL history sync...');
     await performSync();
-    console.log('[SyncService] ⚪ TIER 4: FULL history sync completed');
+    Logger.log('[SyncService] ⚪ TIER 4: FULL history sync completed');
 }
 
 /**
@@ -536,19 +529,20 @@ export async function performSync(): Promise<void> {
 
     isSyncing = true;
     isSyncLocked = true;
-    console.log('[SyncService] Starting synchronization...');
+    Logger.log('[SyncService] Starting synchronization...');
 
     try {
         const db = getDatabase();
 
         await synchronize({
             database: db,
-            pullChanges: async ({ lastPulledAt, schemaVersion, migration }) => {
+            pullChanges: async ({ lastPulledAt }) => {
+
                 const timestamp = lastPulledAt || 0;
                 // If this is the first sync, we pull everything from the beginning of time
                 const lastPulledDate = timestamp === 0 ? '1970-01-01T00:00:00.000Z' : new Date(timestamp).toISOString();
 
-                console.log(`[SyncService] Recursive Pull: Starting from ${lastPulledDate}`);
+                Logger.log(`[SyncService] Recursive Pull: Starting from ${lastPulledDate}`);
 
                 const changes: any = {};
                 const collections = [
@@ -566,7 +560,7 @@ export async function performSync(): Promise<void> {
                     let checkpointUpdatedAt = lastPulledDate;
                     let checkpointId = null;
 
-                    console.log(`[SyncService] Fetching ${table}...`);
+                    Logger.log(`[SyncService] Fetching ${table}...`);
 
                     while (hasMore) {
                         const queries = [
@@ -592,7 +586,7 @@ export async function performSync(): Promise<void> {
                         }
 
                         const response = await databases.listDocuments(DATABASE_ID, id, queries);
-                        console.log(`[SyncService] PULL PAGE: Received ${response.documents.length} docs for ${table}`);
+                        Logger.log(`[SyncService] PULL PAGE: Received ${response.documents.length} docs for ${table}`);
 
                         if (response.documents.length === 0) {
                             hasMore = false;
@@ -628,7 +622,7 @@ export async function performSync(): Promise<void> {
                     }
 
                     changes[table] = tableChanges;
-                    console.log(`[SyncService] ${table}: Pulled ${tableChanges.created.length + tableChanges.updated.length} changes, ${tableChanges.deleted.length} deletions`);
+                    Logger.log(`[SyncService] ${table}: Pulled ${tableChanges.created.length + tableChanges.updated.length} changes, ${tableChanges.deleted.length} deletions`);
                 }
 
                 // Return the current time as the new sync checkpoint
@@ -640,7 +634,7 @@ export async function performSync(): Promise<void> {
             },
 
             pushChanges: async ({ changes }) => {
-                console.log('[SyncService] Pushing local changes...');
+                Logger.log('[SyncService] Pushing local changes...');
 
                 for (const [tableName, tableChanges] of Object.entries(changes)) {
                     const { created, updated, deleted } = tableChanges as any;
@@ -648,7 +642,7 @@ export async function performSync(): Promise<void> {
                     // Find corresponding Appwrite collection ID
                     const collectionId = TABLE_TO_COLLECTION[tableName];
                     if (!collectionId) {
-                        console.warn(`[SyncService] No collection ID found for table: ${tableName}`);
+                        Logger.warn(`[SyncService] No collection ID found for table: ${tableName}`);
                         continue;
                     }
 
@@ -676,10 +670,10 @@ export async function performSync(): Promise<void> {
                                         data
                                     );
                                 } catch (updateError) {
-                                    console.error(`[SyncService] Error updating existing ${tableName}:`, updateError);
+                                    Logger.error(`[SyncService] Error updating existing ${tableName}:`, updateError);
                                 }
                             } else {
-                                console.error(`[SyncService] Error creating ${tableName}:`, error);
+                                Logger.error(`[SyncService] Error creating ${tableName}:`, error);
                             }
                         }
                     }
@@ -697,7 +691,7 @@ export async function performSync(): Promise<void> {
 
                             // Create audit log - Offloaded to server
                         } catch (error) {
-                            console.error(`[SyncService] Error updating ${tableName}:`, error);
+                            Logger.error(`[SyncService] Error updating ${tableName}:`, error);
                         }
                     }
 
@@ -711,18 +705,18 @@ export async function performSync(): Promise<void> {
                                 { deleted: true }
                             );
                         } catch (error) {
-                            console.error(`[SyncService] Error deleting ${tableName}:`, error);
+                            Logger.error(`[SyncService] Error deleting ${tableName}:`, error);
                         }
                     }
 
-                    console.log(`[SyncService] ${tableName}: ${created.length} pushed created, ${updated.length} pushed updated, ${deleted.length} pushed deleted`);
+                    Logger.log(`[SyncService] ${tableName}: ${created.length} pushed created, ${updated.length} pushed updated, ${deleted.length} pushed deleted`);
                 }
             }
         });
 
-        console.log('[SyncService] Synchronization completed successfully');
+        Logger.log('[SyncService] Synchronization completed successfully');
     } catch (error) {
-        console.error('[SyncService] Synchronization failed:', error);
+        Logger.error('[SyncService] Synchronization failed:', error);
         throw error;
     } finally {
         isSyncing = false;
@@ -736,7 +730,7 @@ export async function performSync(): Promise<void> {
 function subscribeToRealtime() {
     if (realtimeSubscription) return;
 
-    console.log('[SyncService] Subscribing to Realtime events...');
+    Logger.log('[SyncService] Subscribing to Realtime events...');
 
     // Subscribe to all document events in the database
     // Pattern: databases.[dbId].collections.[collId].documents
@@ -745,11 +739,12 @@ function subscribeToRealtime() {
         `databases.${DATABASE_ID}.collections.documents`,
         (response) => {
             // Trigger a sync when any remote change occurs
-            console.log('[SyncService] Realtime Event Received:', response.events[0]);
+            Logger.log('[SyncService] Realtime Event Received:', response.events[0]);
 
             // Debounce or directly call performSync? 
             // performSync already has an 'isSyncing' guard.
-            performSync().catch(console.error);
+            performSync().catch(err => Logger.error('[SyncService] Realtime sync failed:', err));
+
         }
     );
 }
@@ -764,11 +759,12 @@ function setupNetworkListener() {
         // isOfflineMode is our manual toggle, but we also respect device state
         const isDeviceConnected = state.isConnected && state.isInternetReachable !== false;
 
-        console.log(`[SyncService] Network Status: ${isDeviceConnected ? 'ONLINE' : 'OFFLINE'}`);
+        Logger.log(`[SyncService] Network Status: ${isDeviceConnected ? 'ONLINE' : 'OFFLINE'}`);
 
         if (isDeviceConnected && !isSyncing) {
             // Auto-trigger sync when connection returns
-            performSync().catch(console.error);
+            performSync().catch(err => Logger.error('[SyncService] Network reconnect sync failed:', err));
+
         }
     });
 }
@@ -782,19 +778,19 @@ function setupNetworkListener() {
 export async function startSync() {
     if (isOfflineMode || syncInterval) return;
 
-    console.log('[SyncService] Starting tiered background sync \u0026 realtime listeners...');
+    Logger.log('[SyncService] Starting tiered background sync \u0026 realtime listeners...');
 
     // 1. Background Tier 2 (High Priority) - Non-blocking
     performHighPrioritySync().catch(error => {
-        console.error('[SyncService] High priority sync failed:', error);
+        Logger.error('[SyncService] High priority sync failed:', error);
     }).then(() => {
         // 2. After Tier 2, start Tier 3 (Medium Priority)
         performMediumPrioritySync().catch(error => {
-            console.error('[SyncService] Medium priority sync failed:', error);
+            Logger.error('[SyncService] Medium priority sync failed:', error);
         }).then(() => {
             // 3. Finally, start Tier 4 (Low Priority - Full History)
             performFullSync().catch(error => {
-                console.error('[SyncService] Full history sync failed:', error);
+                Logger.error('[SyncService] Full history sync failed:', error);
             });
         });
     });
@@ -809,7 +805,7 @@ export async function startSync() {
     // Every 5 minutes, do a full sync to catch any missed updates
     syncInterval = setInterval(() => {
         performSync().catch(error => {
-            console.error('[SyncService] Periodic sync failed:', error);
+            Logger.error('[SyncService] Periodic sync failed:', error);
         });
     }, 300000);
 }
@@ -826,14 +822,14 @@ export function stopSync() {
     if (realtimeSubscription) {
         realtimeSubscription(); // Unsubscribe
         realtimeSubscription = null;
-        console.log('[SyncService] Realtime unsubscribed');
+        Logger.log('[SyncService] Realtime unsubscribed');
     }
 
     if (netInfoUnsubscribe) {
         netInfoUnsubscribe();
         netInfoUnsubscribe = null;
-        console.log('[SyncService] Network listener removed');
+        Logger.log('[SyncService] Network listener removed');
     }
 
-    console.log('[SyncService] Automatic sync stopped');
+    Logger.log('[SyncService] Automatic sync stopped');
 }

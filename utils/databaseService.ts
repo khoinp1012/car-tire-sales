@@ -1,9 +1,10 @@
+import { Logger } from "./logger";
 import { Database } from '@nozbe/watermelondb';
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import { schema } from '@/models/schema';
 import { Inventory, Customer, Sales, UserRole, PermissionConfig, Stack } from '@/models';
-import { ID } from '@/constants/appwrite';
-import { getCurrentUserId, getDeviceId } from './sessionContext';
+
+
 
 let database: Database | null = null;
 
@@ -18,7 +19,7 @@ export function getDatabase(): Database {
         dbName: 'car_tire_sales_db',
         jsi: true, // Use JSI for better performance
         onSetUpError: (error) => {
-            console.error('[DatabaseService] Setup error:', error);
+            Logger.error('[DatabaseService] Setup error:', error);
         }
     });
 
@@ -27,7 +28,7 @@ export function getDatabase(): Database {
         modelClasses: [Inventory, Customer, Sales, UserRole, PermissionConfig, Stack]
     });
 
-    console.log('[DatabaseService] WatermelonDB initialized');
+    Logger.log('[DatabaseService] WatermelonDB initialized');
     return database;
 }
 
@@ -39,7 +40,7 @@ export async function resetDatabase(): Promise<void> {
         await database.write(async () => {
             await database!.unsafeResetDatabase();
         });
-        console.log('[DatabaseService] Database reset');
+        Logger.log('[DatabaseService] Database reset');
     }
 }
 

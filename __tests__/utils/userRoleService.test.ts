@@ -121,7 +121,8 @@ describe('userRoleService', () => {
                 fetch: jest.fn().mockResolvedValue([]),
             };
 
-            const mockRecordCreator = jest.fn();
+
+
             const mockCollection = {
                 query: jest.fn().mockReturnValue(mockQuery),
                 create: jest.fn().mockImplementation((fn) => {

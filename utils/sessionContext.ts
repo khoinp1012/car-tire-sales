@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import { account } from '@/constants/appwrite';
+import { Logger } from './logger';
 
 /**
  * Session Context Manager
@@ -20,7 +21,7 @@ const DEVICE_ID_KEY = '@app/deviceId';
  */
 export async function initializeSessionContext(): Promise<void> {
     try {
-        console.log('[SessionContext] Initializing...');
+        Logger.log('[SessionContext] Initializing...');
 
         // Get or create device ID
         cachedDeviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
@@ -28,24 +29,24 @@ export async function initializeSessionContext(): Promise<void> {
         if (!cachedDeviceId) {
             cachedDeviceId = Crypto.randomUUID();
             await AsyncStorage.setItem(DEVICE_ID_KEY, cachedDeviceId);
-            console.log('[SessionContext] Created new device ID:', cachedDeviceId);
+            Logger.log('[SessionContext] Created new device ID:', cachedDeviceId);
         } else {
-            console.log('[SessionContext] Loaded device ID:', cachedDeviceId);
+            Logger.log('[SessionContext] Loaded device ID:', cachedDeviceId);
         }
 
         // Get user ID
         try {
             const user = await account.get();
             cachedUserId = user.$id;
-            console.log('[SessionContext] Loaded user ID:', cachedUserId);
+            Logger.log('[SessionContext] Loaded user ID:', cachedUserId);
         } catch (error) {
-            console.warn('[SessionContext] No user session, using system');
+            Logger.warn('[SessionContext] No user session, using system');
             cachedUserId = 'system';
         }
 
-        console.log('[SessionContext] Initialized successfully');
+        Logger.log('[SessionContext] Initialized successfully');
     } catch (error) {
-        console.error('[SessionContext] Initialization failed:', error);
+        Logger.error('[SessionContext] Initialization failed:', error);
         cachedUserId = 'system';
         cachedDeviceId = 'unknown';
     }
@@ -66,7 +67,7 @@ export async function getCurrentUserId(): Promise<string> {
         cachedUserId = user.$id;
         return user.$id;
     } catch (error) {
-        console.warn('[SessionContext] Failed to get user ID, using system');
+        Logger.warn('[SessionContext] Failed to get user ID, using system');
         cachedUserId = 'system';
         return 'system';
     }
@@ -92,7 +93,7 @@ export async function getDeviceId(): Promise<string> {
 
         return cachedDeviceId;
     } catch (error) {
-        console.error('[SessionContext] Failed to get device ID:', error);
+        Logger.error('[SessionContext] Failed to get device ID:', error);
         return 'unknown';
     }
 }
@@ -102,7 +103,7 @@ export async function getDeviceId(): Promise<string> {
  */
 export async function updateUserId(userId: string | null): Promise<void> {
     cachedUserId = userId || 'system';
-    console.log('[SessionContext] User ID updated:', cachedUserId);
+    Logger.log('[SessionContext] User ID updated:', cachedUserId);
 }
 
 /**
@@ -110,7 +111,7 @@ export async function updateUserId(userId: string | null): Promise<void> {
  */
 export async function clearSessionContext(): Promise<void> {
     cachedUserId = 'system';
-    console.log('[SessionContext] Session context cleared');
+    Logger.log('[SessionContext] Session context cleared');
 }
 
 /**

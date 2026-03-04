@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
+import { Logger } from './logger';
 
 /**
  * Simple approach to save files to external storage
@@ -7,7 +8,7 @@ import { Platform } from 'react-native';
  * Always keeps a copy in app directory for sharing purposes
  */
 export const saveToExternalStorage = async (
-  sourceUri: string, 
+  sourceUri: string,
   filename: string
 ): Promise<{ success: boolean; path: string; location: string; appPath: string }> => {
   try {
@@ -23,12 +24,12 @@ export const saveToExternalStorage = async (
         // Try to save to public external directory
         // Note: This might require WRITE_EXTERNAL_STORAGE permission
         const externalPath = `${FileSystem.documentDirectory}../../../storage/emulated/0/Download/${filename}`;
-        
+
         await FileSystem.copyAsync({
           from: appPath,
           to: externalPath,
         });
-        
+
         return {
           success: true,
           path: `/storage/emulated/0/Download/${filename}`,
@@ -36,8 +37,8 @@ export const saveToExternalStorage = async (
           appPath: appPath
         };
       } catch (externalError) {
-        console.warn('External storage access failed:', externalError);
-        
+        Logger.warn('External storage access failed:', externalError);
+
         // Fallback to app directory (which we already saved)
         return {
           success: true,
@@ -56,7 +57,7 @@ export const saveToExternalStorage = async (
       };
     }
   } catch (error) {
-    console.error('Error in saveToExternalStorage:', error);
+    Logger.error('Error in saveToExternalStorage:', error);
     return {
       success: false,
       path: sourceUri,
@@ -84,7 +85,7 @@ export const saveWithUserPicker = async (
     // In the future, this could be enhanced with StorageAccessFramework
     return saveToExternalStorage(sourceUri, filename);
   } catch (error) {
-    console.error('Error in saveWithUserPicker:', error);
+    Logger.error('Error in saveWithUserPicker:', error);
     return {
       success: false,
       path: sourceUri,

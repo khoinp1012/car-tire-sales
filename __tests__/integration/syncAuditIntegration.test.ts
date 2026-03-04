@@ -122,22 +122,9 @@ describe('Sync and Audit Integration', () => {
     describe('Conflict Resolution with Audit', () => {
         it('should audit both sides of a conflict (Last Write Wins)', async () => {
             // Device A makes change offline
-            const deviceAChange = {
-                id: 'tire_conflict',
-                unitPrice: 100,
-                version: 2,
-                lastModifiedBy: 'user_A',
-                updatedAt: new Date('2024-12-25T10:00:00.000Z').getTime()
-            };
 
-            // Device B makes different change offline
-            const deviceBChange = {
-                id: 'tire_conflict',
-                unitPrice: 110,
-                version: 2,
-                lastModifiedBy: 'user_B',
-                updatedAt: new Date('2024-12-25T10:05:00.000Z').getTime()
-            };
+
+
 
             // Both sync - Device B wins (later timestamp)
             const auditLogs = [
@@ -204,13 +191,9 @@ describe('Sync and Audit Integration', () => {
 
         it('should handle sync of deleted records with audit', async () => {
             // Local soft delete
-            const localRecord = {
-                id: 'tire_soft_delete',
-                brand: 'Yokohama',
-                deleted: true,
-                version: 2,
-                lastModifiedBy: 'user_123'
-            };
+
+
+
 
             // Sync pushes deletion to Appwrite
             const appwriteDocument = {

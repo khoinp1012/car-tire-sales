@@ -1,3 +1,4 @@
+import { Logger } from "./logger";
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Alert } from 'react-native';
@@ -24,7 +25,7 @@ export const makeFileAccessible = async (filePath: string, filename: string) => 
       );
     }
   } catch (error) {
-    console.error('Error making file accessible:', error);
+    Logger.error('Error making file accessible:', error);
     Alert.alert(
       'File Information',
       `PDF saved to: ${filePath}\n\nUse the Share button to access the file.`,
@@ -61,7 +62,7 @@ export const listSavedPDFs = async (): Promise<string[]> => {
     const files = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
     return files.filter(file => file.endsWith('.pdf'));
   } catch (error) {
-    console.error('Error listing PDFs:', error);
+    Logger.error('Error listing PDFs:', error);
     return [];
   }
 };
@@ -84,7 +85,7 @@ export const getPDFInfo = async (filename: string) => {
     }
     return null;
   } catch (error) {
-    console.error('Error getting PDF info:', error);
+    Logger.error('Error getting PDF info:', error);
     return null;
   }
 };

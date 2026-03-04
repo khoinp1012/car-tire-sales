@@ -61,3 +61,7 @@ server_side/__pycache__/
 server_side/*.pyc
 *.egg-info/
 .pytest_cache/ios/.xcode.env
+
+# Handoff
+handoff.md
+session_handoff/

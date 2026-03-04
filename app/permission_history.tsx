@@ -23,6 +23,7 @@ import {
 } from '@/utils/permissionService';
 import { PermissionConfig } from '@/types/permissions';
 import { getUserRole } from '@/utils/userRoleService';
+import { Logger } from '@/utils/logger';
 
 export default function PermissionHistoryScreen() {
     const router = useRouter();
@@ -31,11 +32,20 @@ export default function PermissionHistoryScreen() {
     const [configHistory, setConfigHistory] = useState<PermissionConfig[]>([]);
     const [isAdmin, setIsAdmin] = useState(false);
 
-    useEffect(() => {
-        checkAdminAccess();
+    const loadHistory = React.useCallback(async () => {
+        try {
+            setLoading(true);
+            const history = await getPermissionConfigHistory();
+            setConfigHistory(history);
+        } catch (error) {
+            Logger.error('Error loading history:', error);
+            Alert.alert('Error', 'Failed to load permission history');
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    const checkAdminAccess = async () => {
+    const checkAdminAccess = React.useCallback(async () => {
         try {
             const user = await account.get();
             const userRole = await getUserRole(user.$id);
@@ -52,23 +62,15 @@ export default function PermissionHistoryScreen() {
             setIsAdmin(true);
             await loadHistory();
         } catch (error) {
+            Logger.error('Error verifying admin access:', error);
             Alert.alert('Error', 'Failed to verify admin access');
             router.back();
         }
-    };
+    }, [router, loadHistory]);
 
-    const loadHistory = async () => {
-        try {
-            setLoading(true);
-            const history = await getPermissionConfigHistory();
-            setConfigHistory(history);
-        } catch (error) {
-            console.error('Error loading history:', error);
-            Alert.alert('Error', 'Failed to load permission history');
-        } finally {
-            setLoading(false);
-        }
-    };
+    useEffect(() => {
+        checkAdminAccess();
+    }, [checkAdminAccess]);
 
     const handleActivateConfig = async (configId: string, version: string) => {
         Alert.alert(

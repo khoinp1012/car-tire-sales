@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import { Platform, Alert } from 'react-native';
+import { Logger } from './logger';
 
 /**
  * Save a file to Android Downloads folder using Storage Access Framework
@@ -60,7 +61,7 @@ export const saveToAndroidDownloads = async (
             path: fileUri,
         };
     } catch (error) {
-        console.error('Error saving to Android Downloads:', error);
+        Logger.error('Error saving to Android Downloads:', error);
         return {
             success: false,
             path: null,
@@ -109,7 +110,7 @@ export const saveToDownloadsWithFallback = async (
                     userSelected: false
                 };
             } catch (error) {
-                console.log('Cached URI failed, will prompt user:', error);
+                Logger.log('Cached URI failed, will prompt user:', error);
                 // Fall through to user selection
             }
         }
@@ -129,7 +130,7 @@ export const saveToDownloadsWithFallback = async (
             userSelected: true
         };
     } catch (error) {
-        console.error('Error in saveToDownloadsWithFallback:', error);
+        Logger.error('Error in saveToDownloadsWithFallback:', error);
         return { success: false, path: null, userSelected: false };
     }
 };
@@ -152,7 +153,7 @@ const getCachedDownloadsUri = async (): Promise<string | null> => {
 const cacheDownloadsUri = async (uri: string): Promise<void> => {
     // Note: In a real implementation, you might want to store this in AsyncStorage
     // For now, we rely on the system's permission persistence
-    console.log('Downloads URI cached:', uri);
+    Logger.log('Downloads URI cached:', uri);
 };
 
 /**

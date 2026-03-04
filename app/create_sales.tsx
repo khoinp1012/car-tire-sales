@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { AutocompleteDropdown, AutocompleteDropdownContextProvider } from 'react-native-autocomplete-dropdown';
 import { Databases, Query, ID, Permission, Role } from 'react-native-appwrite';
 import appwrite, { DATABASE_ID, INVENTORY_COLLECTION_ID, CUSTOMERS_COLLECTION_ID, SALES_COLLECTION_ID } from '@/constants/appwrite';
@@ -11,6 +11,7 @@ import { useLanguage } from '@/components/LanguageContext';
 import { formatVNCurrency } from '@/utils/invoiceUtils';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { usePermissions } from '@/hooks/usePermissions';
+import { Logger } from '@/utils/logger';
 
 const styles = StyleSheet.create({
   container: {
@@ -92,7 +93,8 @@ const styles = StyleSheet.create({
 
 function CreateSalesContent() {
   const { lang } = useLanguage();
-  const { permissions } = usePermissions();
+  usePermissions();
+
   const router = useRouter();
   const [pendingItems, setPendingItems] = useState<any[]>([]);
   const [customers, setCustomers] = useState<{ id: string; title: string; data: any }[]>([]);
@@ -101,23 +103,7 @@ function CreateSalesContent() {
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      await Promise.all([loadPendingItems(), loadCustomers()]);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToLoadData', { locale: lang }));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadPendingItems = async () => {
+  const loadPendingItems = React.useCallback(async () => {
     try {
       const databases = new Databases(appwrite);
 
@@ -129,12 +115,12 @@ function CreateSalesContent() {
 
       setPendingItems(result.documents);
     } catch (error) {
-      console.error('Error loading pending items:', error);
+      Logger.error('Error loading pending items:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const loadCustomers = async () => {
+  const loadCustomers = React.useCallback(async () => {
     try {
       const databases = new Databases(appwrite);
 
@@ -151,34 +137,39 @@ function CreateSalesContent() {
 
       setCustomers(formattedCustomers);
     } catch (error) {
-      console.error('Error loading customers:', error);
+      Logger.error('Error loading customers:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const calculateTotal = () => {
+  const loadData = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      await Promise.all([loadPendingItems(), loadCustomers()]);
+    } catch (error) {
+      Logger.error('Error loading data:', error);
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToLoadData', { locale: lang }));
+    } finally {
+      setLoading(false);
+    }
+  }, [lang, loadPendingItems, loadCustomers]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const calculateTotal = React.useCallback(() => {
     return pendingItems.reduce((total, item) => total + (item.unit_price || 0), 0);
-  };
+  }, [pendingItems]);
 
-  const calculateFinalTotal = () => {
+  const calculateFinalTotal = React.useCallback(() => {
     const total = calculateTotal();
     const discount = selectedCustomer?.data.discount_percent || 0;
     const discountAmount = (total * discount) / 100;
     return total - discountAmount;
-  };
+  }, [calculateTotal, selectedCustomer]);
 
-  const handleCancelSale = async () => {
-    Alert.alert(
-      i18n.t('confirmSale', { locale: lang }),
-      i18n.t('cancelSaleConfirm', { locale: lang }),
-      [
-        { text: i18n.t('cancel', { locale: lang }), style: 'cancel' },
-        { text: i18n.t('confirm', { locale: lang }), onPress: confirmCancelSale }
-      ]
-    );
-  };
-
-  const confirmCancelSale = async () => {
+  const confirmCancelSale = React.useCallback(async () => {
     try {
       setSubmitting(true);
       const databases = new Databases(appwrite);
@@ -198,40 +189,25 @@ function CreateSalesContent() {
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error) {
-      console.error('Error cancelling sale:', error);
+      Logger.error('Error cancelling sale:', error);
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToCancelSale', { locale: lang }));
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [lang, pendingItems, router]);
 
-  const handleCreateSale = async () => {
-    if (!selectedCustomer) {
-      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('pleaseSelectCustomer', { locale: lang }));
-      return;
-    }
-
-    if (pendingItems.length === 0) {
-      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('noPendingItems', { locale: lang }));
-      return;
-    }
-
-    const finalTotal = selectedCustomer?.data.discount_percent > 0 ? calculateFinalTotal() : calculateTotal();
-    const discountText = selectedCustomer?.data.discount_percent > 0
-      ? ` (${i18n.t('total', { locale: lang })}: ${formatVNCurrency(finalTotal)} VND ${i18n.t('after', { locale: lang })} ${selectedCustomer.data.discount_percent}% ${i18n.t('discount', { locale: lang })})`
-      : ` (${i18n.t('total', { locale: lang })}: ${formatVNCurrency(finalTotal)} VND)`;
-
+  const handleCancelSale = React.useCallback(async () => {
     Alert.alert(
       i18n.t('confirmSale', { locale: lang }),
-      `${i18n.t('createSaleFor', { locale: lang })} ${selectedCustomer.data.name} ${i18n.t('withItems', { locale: lang })} ${pendingItems.length} ${i18n.t('items', { locale: lang })}?${discountText}`,
+      i18n.t('cancelSaleConfirm', { locale: lang }),
       [
         { text: i18n.t('cancel', { locale: lang }), style: 'cancel' },
-        { text: i18n.t('confirm', { locale: lang }), onPress: confirmSale }
+        { text: i18n.t('confirm', { locale: lang }), onPress: confirmCancelSale }
       ]
     );
-  };
+  }, [lang, confirmCancelSale]);
 
-  const confirmSale = async () => {
+  const confirmSale = React.useCallback(async () => {
     try {
       setSubmitting(true);
       const databases = new Databases(appwrite);
@@ -266,7 +242,7 @@ function CreateSalesContent() {
         // reference_id is omitted so it defaults to null
       };
 
-      console.log('Creating sales order with data:', salesOrder);
+      Logger.log('Creating sales order with data:', salesOrder);
 
       const saleResult = await databases.createDocument(
         DATABASE_ID,
@@ -277,6 +253,7 @@ function CreateSalesContent() {
           Permission.read(Role.any()),
           Permission.update(Role.any()),
           Permission.delete(Role.any()),
+          Permission.write(Role.any()), // Assuming write is needed or handled by service
         ]
       );
 
@@ -290,7 +267,7 @@ function CreateSalesContent() {
 
       await Promise.all(updatePromises);
 
-      console.log('Sales order created successfully:', saleResult);
+      Logger.log('Sales order created successfully:', saleResult);
       setShowSuccess(true);
 
       // Reset and reload data after success
@@ -301,12 +278,38 @@ function CreateSalesContent() {
       }, 2000);
 
     } catch (error) {
-      console.error('Error creating sale:', error);
+      Logger.error('Error creating sale:', error);
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('failedToCreateSale', { locale: lang }));
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [pendingItems, calculateTotal, selectedCustomer, lang, loadData]);
+
+  const handleCreateSale = React.useCallback(async () => {
+    if (!selectedCustomer) {
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('pleaseSelectCustomer', { locale: lang }));
+      return;
+    }
+
+    if (pendingItems.length === 0) {
+      Alert.alert(i18n.t('error', { locale: lang }), i18n.t('noPendingItems', { locale: lang }));
+      return;
+    }
+
+    const finalTotal = selectedCustomer?.data.discount_percent > 0 ? calculateFinalTotal() : calculateTotal();
+    const discountText = selectedCustomer?.data.discount_percent > 0
+      ? ` (${i18n.t('total', { locale: lang })}: ${formatVNCurrency(finalTotal)} VND ${i18n.t('after', { locale: lang })} ${selectedCustomer.data.discount_percent}% ${i18n.t('discount', { locale: lang })})`
+      : ` (${i18n.t('total', { locale: lang })}: ${formatVNCurrency(finalTotal)} VND)`;
+
+    Alert.alert(
+      i18n.t('confirmSale', { locale: lang }),
+      `${i18n.t('createSaleFor', { locale: lang })} ${selectedCustomer.data.name} ${i18n.t('withItems', { locale: lang })} ${pendingItems.length} ${i18n.t('items', { locale: lang })}?${discountText}`,
+      [
+        { text: i18n.t('cancel', { locale: lang }), style: 'cancel' },
+        { text: i18n.t('confirm', { locale: lang }), onPress: confirmSale }
+      ]
+    );
+  }, [selectedCustomer, lang, pendingItems, calculateFinalTotal, calculateTotal, confirmSale]);
 
   if (loading) {
     return (
@@ -390,7 +393,8 @@ function CreateSalesContent() {
             {pendingItems.length === 0 ? (
               <Text style={styles.noItemsText}>{i18n.t('noPendingItemsFound', { locale: lang })}</Text>
             ) : (
-              pendingItems.map((item, index) => (
+              pendingItems.map((item, _index) => (
+
                 <View key={item.$id} style={styles.itemCard}>
                   <Text style={styles.itemText}>
                     <Text style={{ fontWeight: 'bold' }}>#{item.sequence}</Text> - {item.full_description}

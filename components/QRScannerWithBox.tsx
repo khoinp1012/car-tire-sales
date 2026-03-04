@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Alert, Dimensions, Platform, TextInput, Animated } from 'react-native';
+import { View, Text, StyleSheet, Alert, Dimensions, TextInput, Animated } from 'react-native';
 import { Camera, CameraView } from 'expo-camera';
-import { useRouter } from 'expo-router';
+import { Logger } from '@/utils/logger';
 import ThemedButton from '@/components/ThemedButton';
 import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
@@ -176,7 +176,6 @@ export default function QRScannerWithBox({
   subtitle,
   showManualInput = true,
   restrictToBox = false, // Default to fast scanning
-  debugMode = false // Default to no debug logging
 }: QRScannerProps) {
   const { lang } = useLanguage();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -188,20 +187,7 @@ export default function QRScannerWithBox({
   // Animation for scanning line
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
 
-  // Check if running in emulator/simulator
-  const isEmulator = __DEV__ && (Platform.OS === 'android' || Platform.OS === 'ios');
-
-  useEffect(() => {
-    requestCameraPermission();
-  }, []);
-
-  useEffect(() => {
-    if (cameraReady && !scanned) {
-      startScanAnimation();
-    }
-  }, [cameraReady, scanned]);
-
-  const startScanAnimation = () => {
+  const startScanAnimation = React.useCallback(() => {
     const animate = () => {
       scanLineAnimation.setValue(0);
       Animated.timing(scanLineAnimation, {
@@ -215,66 +201,80 @@ export default function QRScannerWithBox({
       });
     };
     animate();
-  };
+  }, [scanLineAnimation, scanned]);
 
-  const requestCameraPermission = async () => {
-    try {
-      console.log('[QR SCANNER] Checking camera permissions...');
+  const requestCameraPermission = React.useCallback(async () => {
+    const performRequest = async () => {
+      try {
+        Logger.log('[QR SCANNER] Checking camera permissions...');
 
-      // First, check if we already have permission (instant, no dialog)
-      const currentPermission = await Camera.getCameraPermissionsAsync();
-      console.log('[QR SCANNER] Current permission status:', currentPermission.status);
+        // First, check if we already have permission (instant, no dialog)
+        const currentPermission = await Camera.getCameraPermissionsAsync();
+        Logger.log('[QR SCANNER] Current permission status:', currentPermission.status);
 
-      if (currentPermission.status === 'granted') {
-        console.log('[QR SCANNER] Camera permission already granted');
-        setHasPermission(true);
-        return;
-      }
+        if (currentPermission.status === 'granted') {
+          Logger.log('[QR SCANNER] Camera permission already granted');
+          setHasPermission(true);
+          return;
+        }
 
-      // If not granted, request permission (may show system dialog)
-      console.log('[QR SCANNER] Requesting camera permission...');
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      console.log('[QR SCANNER] Permission request result:', status);
+        // If not granted, request permission (may show system dialog)
+        Logger.log('[QR SCANNER] Requesting camera permission...');
+        const { status } = await Camera.requestCameraPermissionsAsync();
+        Logger.log('[QR SCANNER] Permission request result:', status);
 
-      if (status === 'granted') {
-        console.log('[QR SCANNER] Camera permission granted');
-        setHasPermission(true);
-      } else {
-        console.log('[QR SCANNER] Camera permission denied:', status);
+        if (status === 'granted') {
+          Logger.log('[QR SCANNER] Camera permission granted');
+          setHasPermission(true);
+        } else {
+          Logger.log('[QR SCANNER] Camera permission denied:', status);
+          setHasPermission(false);
+          if (showManualInput) {
+            Alert.alert(
+              i18n.t('cameraPermissionRequired', { locale: lang }),
+              i18n.t('enableCameraPermissionMessage', { locale: lang }),
+              [
+                {
+                  text: i18n.t('manualInput', { locale: lang }),
+                  onPress: () => setShowManual(true)
+                },
+                {
+                  text: i18n.t('tryAgain', { locale: lang }),
+                  onPress: () => performRequest()
+                }
+              ]
+            );
+          }
+        }
+      } catch (error) {
+        Logger.error('[QR SCANNER] Error with camera permission:', error);
         setHasPermission(false);
         if (showManualInput) {
-          Alert.alert(
-            i18n.t('cameraPermissionRequired', { locale: lang }),
-            i18n.t('enableCameraPermissionMessage', { locale: lang }),
-            [
-              {
-                text: i18n.t('manualInput', { locale: lang }),
-                onPress: () => setShowManual(true)
-              },
-              {
-                text: i18n.t('tryAgain', { locale: lang }),
-                onPress: requestCameraPermission
-              }
-            ]
-          );
+          setShowManual(true);
         }
       }
-    } catch (error) {
-      console.error('[QR SCANNER] Error with camera permission:', error);
-      setHasPermission(false);
-      if (showManualInput) {
-        setShowManual(true);
-      }
-    }
-  };
+    };
 
-  const handleBarcodeScanned = ({ type, data, bounds }: any) => {
+    await performRequest();
+  }, [lang, showManualInput]);
+
+  useEffect(() => {
+    requestCameraPermission();
+  }, [requestCameraPermission]);
+
+  useEffect(() => {
+    if (cameraReady && !scanned) {
+      startScanAnimation();
+    }
+  }, [cameraReady, scanned, startScanAnimation]);
+
+  const handleBarcodeScanned = ({ _type, data, bounds }: any) => {
     if (scanned) return;
 
     // If restrictToBox is enabled, check bounds. Otherwise scan immediately for better performance
     if (restrictToBox) {
-      console.log('[QR SCANNER] Bounds checking enabled');
-      console.log('[QR SCANNER] Bounds object:', bounds);
+      Logger.log('[QR SCANNER] Bounds checking enabled');
+      Logger.log('[QR SCANNER] Bounds object:', bounds);
 
       if (bounds && bounds.origin && bounds.size) {
         // Calculate QR code center
@@ -288,22 +288,22 @@ export default function QRScannerWithBox({
         const boxTop = OVERLAY_TOP_HEIGHT - tolerance;
         const boxBottom = OVERLAY_TOP_HEIGHT + SCANNER_BOX_HEIGHT + tolerance;
 
-        console.log(`[QR SCANNER] QR Center: (${qrCenterX}, ${qrCenterY})`);
-        console.log(`[QR SCANNER] Box bounds: left=${boxLeft}, right=${boxRight}, top=${boxTop}, bottom=${boxBottom}`);
-        console.log(`[QR SCANNER] Screen: ${screenWidth}x${screenHeight}, Box: ${SCANNER_BOX_WIDTH}x${SCANNER_BOX_HEIGHT}`);
+        Logger.log(`[QR SCANNER] QR Center: (${qrCenterX}, ${qrCenterY})`);
+        Logger.log(`[QR SCANNER] Box bounds: left=${boxLeft}, right=${boxRight}, top=${boxTop}, bottom=${boxBottom}`);
+        Logger.log(`[QR SCANNER] Screen: ${screenWidth}x${screenHeight}, Box: ${SCANNER_BOX_WIDTH}x${SCANNER_BOX_HEIGHT}`);
 
         // Check if QR code center is within the scanner box (with tolerance)
         if (qrCenterX >= boxLeft && qrCenterX <= boxRight &&
           qrCenterY >= boxTop && qrCenterY <= boxBottom) {
-          console.log('[QR SCANNER] QR code detected within scanner box (with tolerance):', data);
+          Logger.log('[QR SCANNER] QR code detected within scanner box (with tolerance):', data);
           setScanned(true);
           onScanned(data);
         } else {
-          console.log('[QR SCANNER] QR code detected outside scanner box, ignoring');
+          Logger.log('[QR SCANNER] QR code detected outside scanner box, ignoring');
         }
         return;
       } else {
-        console.log('[QR SCANNER] Bounds not available, falling back to immediate scan');
+        Logger.log('[QR SCANNER] Bounds not available, falling back to immediate scan');
         // Fallback if bounds are not available
         setScanned(true);
         onScanned(data);
@@ -312,14 +312,14 @@ export default function QRScannerWithBox({
     }
 
     // Default fast scanning mode - scan immediately
-    console.log('[QR SCANNER] Fast scanning mode - QR code detected:', data);
+    Logger.log('[QR SCANNER] Fast scanning mode - QR code detected:', data);
     setScanned(true);
     onScanned(data);
   };
 
   const handleManualSubmit = () => {
     if (manualInput.trim()) {
-      console.log('[QR SCANNER] Manual input submitted:', manualInput.trim());
+      Logger.log('[QR SCANNER] Manual input submitted:', manualInput.trim());
       onScanned(manualInput.trim());
     } else {
       Alert.alert(i18n.t('error', { locale: lang }), i18n.t('pleaseEnterQRCode', { locale: lang }));

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Alert, Platform, View, Text, Linking, AppState, ActivityIndicator } from 'react-native';
+import { StyleSheet, Alert, Platform, View, Text, Linking, AppState } from 'react-native';
 import { useRouter } from 'expo-router';
 import { account, functions } from '@/constants/appwrite';
 import { OAuthProvider } from 'react-native-appwrite';
@@ -10,10 +10,11 @@ import Logo from '@/components/Logo';
 import { LanguageProvider, useLanguage } from '@/components/LanguageContext';
 import LanguageSwitcherBox from '@/components/LanguageSwitcherBox';
 import i18n from '@/constants/i18n';
-import { GOOGLE_WEB_CLIENT_ID, APPWRITE_NATIVE_SIGNIN_FUNCTION_URL } from '@/constants/googleConfig';
+import { GOOGLE_WEB_CLIENT_ID } from '@/constants/googleConfig';
 import { ENV } from '@/constants/env';
 import { updateUserId } from '@/utils/sessionContext';
 import { performCriticalSync, startSync } from '@/utils/syncService';
+import { Logger } from '@/utils/logger';
 
 function IndexScreenContent() {
   const router = useRouter();
@@ -23,57 +24,77 @@ function IndexScreenContent() {
   const { lang } = useLanguage();
   const authTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    setIsWeb(Platform.OS === 'web');
-    checkAuthStatus();
+  const checkAuthStatus = React.useCallback(async () => {
+    try {
+      const user = await account.get();
 
-    // Configure Google Sign-In
-    if (Platform.OS !== 'web') {
-      GoogleSignin.configure({
-        webClientId: GOOGLE_WEB_CLIENT_ID,
-        offlineAccess: true,
+      if (user?.email || user?.$id) {
+        // Clear any pending timeout
+        if (authTimeoutRef.current) {
+          clearTimeout(authTimeoutRef.current);
+          authTimeoutRef.current = null;
+        }
+
+        setLoading(false);
+        setPendingAuth(false);
+
+        router.replace({
+          pathname: '/welcome',
+          params: {
+            email: user.email || 'anonymous',
+            name: user.name || 'User'
+          }
+        });
+        return;
+      }
+    } catch (e) {
+      // No existing session found
+    } finally {
+      setLoading(false);
+      setPendingAuth(false);
+    }
+  }, [router]);
+
+  const createAppwriteSession = React.useCallback(async (userId: string, secret: string) => {
+    try {
+      await account.createSession(userId, secret);
+      const user = await account.get();
+
+      Logger.log('[Index] Session created, updating context & performing critical sync...');
+      await updateUserId(user.$id);
+      await performCriticalSync();
+
+      // Start background sync
+      startSync().catch(err => Logger.error('Sync error:', err));
+
+      router.replace({
+        pathname: '/welcome',
+        params: {
+          email: user.email || 'authenticated-user',
+          name: user.name || 'User'
+        }
       });
 
-      // Note: GOOGLE_ANDROID_CLIENT_ID is used by Google Play Services automatically 
-      // based on the package name and SHA-1 fingerprint. We don't need to pass it here,
-      // but we keep it in googleConfig.ts for reference.
+    } catch (error) {
+      // If session creation fails, maybe the session already exists
+      if ((error as any)?.code === 401 || (error as any)?.message?.includes('session')) {
+        await checkAuthStatus();
+        return;
+      }
+
+      Alert.alert(
+        i18n.t('sessionError', { locale: lang }),
+        `${i18n.t('failedToCreateSession', { locale: lang })}
+
+Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    } finally {
+      setLoading(false);
+      setPendingAuth(false);
     }
-  }, []);
+  }, [lang, router, checkAuthStatus]);
 
-  useEffect(() => {
-    const DEEP_LINK_SCHEME = ENV.APP.DEEP_LINK_SCHEME;
-
-    const handleInitialURL = async () => {
-      const initialUrl = await Linking.getInitialURL();
-      if (initialUrl && (initialUrl.includes(DEEP_LINK_SCHEME) || initialUrl.includes('exp://'))) {
-        handleAuthCallback(initialUrl);
-      }
-    };
-
-    const linkingSubscription = Linking.addEventListener('url', (event) => {
-      if (event.url.includes(DEEP_LINK_SCHEME) || event.url.includes('exp://')) {
-        handleAuthCallback(event.url);
-      }
-    });
-
-    const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active' && pendingAuth) {
-        checkAuthStatus();
-      }
-    });
-
-    handleInitialURL();
-
-    return () => {
-      linkingSubscription.remove();
-      appStateSubscription.remove();
-      if (authTimeoutRef.current) {
-        clearTimeout(authTimeoutRef.current);
-      }
-    };
-  }, [pendingAuth]);
-
-  const handleAuthCallback = async (url: string) => {
+  const handleAuthCallback = React.useCallback(async (url: string) => {
     try {
       const urlObj = new URL(url);
 
@@ -117,79 +138,60 @@ function IndexScreenContent() {
       setLoading(false);
       setPendingAuth(false);
     }
-  };
+  }, [lang, createAppwriteSession, checkAuthStatus]);
 
-  const createAppwriteSession = async (userId: string, secret: string) => {
-    try {
-      const session = await account.createSession(userId, secret);
-      const user = await account.get();
+  useEffect(() => {
+    setIsWeb(Platform.OS === 'web');
+    checkAuthStatus();
 
-      console.log('[Index] Session created, updating context \u0026 performing critical sync...');
-      await updateUserId(user.$id);
-      await performCriticalSync();
-
-      // Start background sync
-      startSync().catch(console.error);
-
-      router.replace({
-        pathname: '/welcome',
-        params: {
-          email: user.email || 'authenticated-user',
-          name: user.name || 'User'
-        }
+    // Configure Google Sign-In
+    if (Platform.OS !== 'web') {
+      GoogleSignin.configure({
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        offlineAccess: true,
       });
 
-    } catch (error) {
-      // If session creation fails, maybe the session already exists
-      if ((error as any)?.code === 401 || (error as any)?.message?.includes('session')) {
-        await checkAuthStatus();
-        return;
-      }
-
-      Alert.alert(
-        i18n.t('sessionError', { locale: lang }),
-        `${i18n.t('failedToCreateSession', { locale: lang })}
-
-Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    } finally {
-      setLoading(false);
-      setPendingAuth(false);
+      // Note: GOOGLE_ANDROID_CLIENT_ID is used by Google Play Services automatically 
+      // based on the package name and SHA-1 fingerprint. We don't need to pass it here,
+      // but we keep it in googleConfig.ts for reference.
     }
-  };
+  }, [checkAuthStatus]);
 
-  const checkAuthStatus = async () => {
-    try {
-      const user = await account.get();
+  useEffect(() => {
+    const DEEP_LINK_SCHEME = ENV.APP.DEEP_LINK_SCHEME;
 
-      if (user?.email || user?.$id) {
-        // Clear any pending timeout
-        if (authTimeoutRef.current) {
-          clearTimeout(authTimeoutRef.current);
-          authTimeoutRef.current = null;
-        }
-
-        setLoading(false);
-        setPendingAuth(false);
-
-        router.replace({
-          pathname: '/welcome',
-          params: {
-            email: user.email || 'anonymous',
-            name: user.name || 'User'
-          }
-        });
-        return;
+    const handleInitialURL = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl && (initialUrl.includes(DEEP_LINK_SCHEME) || initialUrl.includes('exp://'))) {
+        handleAuthCallback(initialUrl);
       }
-    } catch (e) {
-      // No existing session found
-    } finally {
-      setLoading(false);
-      setPendingAuth(false);
-    }
-  };
+    };
 
-  const startGoogleAuth = async () => {
+    const linkingSubscription = Linking.addEventListener('url', (event) => {
+      if (event.url.includes(DEEP_LINK_SCHEME) || event.url.includes('exp://')) {
+        handleAuthCallback(event.url);
+      }
+    });
+
+    const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && pendingAuth) {
+        checkAuthStatus();
+      }
+    });
+
+    handleInitialURL();
+
+    return () => {
+      linkingSubscription.remove();
+      appStateSubscription.remove();
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+      }
+    };
+  }, [pendingAuth, handleAuthCallback, checkAuthStatus]);
+
+
+  const startGoogleAuth = React.useCallback(async () => {
     setLoading(true);
     setPendingAuth(true);
 
@@ -206,7 +208,7 @@ Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
         path: 'error',
       });
 
-      console.log('OAuth Configuration:', {
+      Logger.log('OAuth Configuration:', {
         redirectUri,
         failureUri,
         platform: Platform.OS,
@@ -260,9 +262,9 @@ Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
         authTimeoutRef.current = null;
       }
     }
-  };
+  }, [lang, pendingAuth]);
 
-  const startNativeGoogleSignIn = async () => {
+  const startNativeGoogleSignIn = React.useCallback(async () => {
     if (Platform.OS === 'web') {
       Alert.alert(
         i18n.t('notAvailableOnWeb', { locale: lang }),
@@ -272,24 +274,24 @@ Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
 
     setLoading(true);
-    console.log('--- Native Google Sign-In Started ---');
+    Logger.log('--- Native Google Sign-In Started ---');
 
     try {
-      console.log('Checking Play Services...');
+      Logger.log('Checking Play Services...');
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
-      console.log('Calling GoogleSignin.signIn()...');
+      Logger.log('Calling GoogleSignin.signIn()...');
       const userInfo = await GoogleSignin.signIn();
-      console.log('Google Sign-In Success:', JSON.stringify(userInfo, null, 2));
+      Logger.log('Google Sign-In Success:', JSON.stringify(userInfo, null, 2));
 
       const idToken = userInfo.data?.idToken;
       if (!idToken) {
-        console.error('No ID token found in userInfo.data');
+        Logger.error('No ID token found in userInfo.data');
         throw new Error('Failed to get ID token from Google');
       }
 
-      console.log('ID Token retrieved:', idToken.substring(0, 20) + '...');
-      console.log('Calling Appwrite function: google-native-signin');
+      Logger.log('ID Token retrieved:', idToken.substring(0, 20) + '...');
+      Logger.log('Calling Appwrite function: google-native-signin');
 
       // Call Appwrite function to verify token and create session
       // We use createExecution which is the standard way to run Appwrite functions from the client
@@ -299,10 +301,10 @@ Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
         false // async = false to wait for result
       );
 
-      console.log('Execution result:', JSON.stringify(execution, null, 2));
+      Logger.log('Execution result:', JSON.stringify(execution, null, 2));
 
       if (execution.status === 'failed') {
-        console.error('Function execution failed:', execution.errors);
+        Logger.error('Function execution failed:', execution.errors);
         throw new Error(`Function failed: ${execution.errors || 'Unknown execution error'}`);
       }
 
@@ -310,24 +312,24 @@ Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
       try {
         result = JSON.parse(execution.responseBody);
       } catch (parseError) {
-        console.error('Failed to parse function response body:', parseError);
+        Logger.error('Failed to parse function response body:', parseError);
         throw new Error(`Invalid JSON output from function: ${execution.responseBody.substring(0, 100)}`);
       }
 
-      console.log('Function Output result:', JSON.stringify(result, null, 2));
+      Logger.log('Function Output result:', JSON.stringify(result, null, 2));
 
       if (!result.success) {
-        console.error('Appwrite function returned success: false');
+        Logger.error('Appwrite function returned success: false');
         throw new Error(result.error || 'Failed to authenticate with Appwrite');
       }
 
-      console.log('Creating session with userId:', result.userId);
+      Logger.log('Creating session with userId:', result.userId);
 
       // Check if session already exists
       try {
         const existingUser = await account.get();
         if (existingUser && existingUser.$id === result.userId) {
-          console.log('Session already exists for this user, skipping session creation');
+          Logger.log('Session already exists for this user, skipping session creation');
 
           // Navigate to welcome screen directly
           router.replace({
@@ -341,24 +343,24 @@ Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
         }
       } catch (e) {
         // No existing session, continue with session creation
-        console.log('No existing session found, creating new session');
+        Logger.log('No existing session found, creating new session');
       }
 
       // Create session with the returned userId and secret
       await account.createSession(result.userId, result.secret);
-      console.log('Session created successfully!');
+      Logger.log('Session created successfully!');
 
       // Get user info
-      console.log('Fetching user details from account.get()...');
+      Logger.log('Fetching user details from account.get()...');
       const user = await account.get();
-      console.log('User details retrieved:', user.email);
+      Logger.log('User details retrieved:', user.email);
 
-      console.log('[Index] Native session created, updating context \u0026 performing critical sync...');
+      Logger.log('[Index] Native session created, updating context & performing critical sync...');
       await updateUserId(user.$id);
       await performCriticalSync();
 
       // Start background sync
-      startSync().catch(console.error);
+      startSync().catch(err => Logger.error('Sync error:', err));
 
       // Navigate to welcome screen
       router.replace({
@@ -370,11 +372,11 @@ Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
 
     } catch (error: any) {
-      console.error('--- Native Google Sign-In Error ---');
-      console.error('Error object:', error);
-      console.error('Error message:', error?.message);
-      console.error('Error code:', error?.code);
-      console.error('Error stack:', error?.stack);
+      Logger.error('--- Native Google Sign-In Error ---');
+      Logger.error('Error object:', error);
+      Logger.error('Error message:', error?.message);
+      Logger.error('Error code:', error?.code);
+      Logger.error('Error stack:', error?.stack);
 
       let errorMessage = 'An unknown error occurred';
 
@@ -393,10 +395,10 @@ Debug: ${error instanceof Error ? error.message : 'Unknown error'}`
         `${errorMessage}\n\nCheck console for details.`
       );
     } finally {
-      console.log('--- Native Google Sign-In Finished ---');
+      Logger.log('--- Native Google Sign-In Finished ---');
       setLoading(false);
     }
-  };
+  }, [lang, router]);
 
   if (loading && !pendingAuth) {
     return (

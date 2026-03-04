@@ -12,6 +12,12 @@ export const Logger = {
             console.log(`[INFO] ${message}`, ...args);
         }
     },
+    log: (message: string, ...args: any[]) => {
+        if (IS_DEV) {
+            // eslint-disable-next-line no-console
+            console.log(`[LOG] ${message}`, ...args);
+        }
+    },
     warn: (message: string, ...args: any[]) => {
         if (IS_DEV) {
             // eslint-disable-next-line no-console

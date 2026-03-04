@@ -4,22 +4,23 @@ import QRScannerWithBox from '@/components/QRScannerWithBox';
 import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Logger } from '@/utils/logger';
 
 function ScanModifyInventoryContent() {
   const { lang } = useLanguage();
   const router = useRouter();
 
-  const handleScanned = (data: string) => {
-    console.log('[SCAN MODIFY INVENTORY] QR code scanned:', data);
-    router.push({ 
-      pathname: '/modify_inventory', 
-      params: { scanned: data.trim() } 
+  const handleScanned = React.useCallback((data: string) => {
+    Logger.log('[SCAN MODIFY INVENTORY] QR code scanned:', data);
+    router.push({
+      pathname: '/modify_inventory',
+      params: { scanned: data.trim() }
     });
-  };
+  }, [router]);
 
-  const handleCancel = () => {
+  const handleCancel = React.useCallback(() => {
     router.back();
-  };
+  }, [router]);
 
   return (
     <QRScannerWithBox

@@ -1,12 +1,8 @@
-// Template utilities for processing HTML templates with placeholders
-import * as FileSystem from 'expo-file-system';
 import { loadTemplateFromAssets, initializeTemplates } from './templateContent';
+import { Logger } from './logger';
 import { formatTireSize } from './tireSizeFormatter';
 
 // Minimal fallback template in case all file loading fails
-const FALLBACK_DEFAULT_TEMPLATE = `// Template utilities for processing HTML templates with placeholders
-import * as FileSystem from 'expo-file-system';
-import { loadTemplateFromAssets, initializeTemplates } from './templateContent';`;
 
 export interface InventoryItem {
   full_description: string;
@@ -35,7 +31,8 @@ export type TemplateType = 'default' | 'minimal' | 'detailed' | 'receipt';
  * Load HTML template from files using the template loading system
  */
 export const loadHTMLTemplate = async (templateType: TemplateType = 'default'): Promise<string> => {
-  console.log(`🔄 Loading template: ${templateType}`);
+  Logger.log(`🔄 Loading template: ${templateType}`);
+
 
   try {
     // Ensure templates are initialized first
@@ -50,7 +47,8 @@ export const loadHTMLTemplate = async (templateType: TemplateType = 'default'): 
     };
 
     const templateFileName = templateFileMap[templateType];
-    console.log(`📋 Loading template file: ${templateFileName} for type: ${templateType}`);
+    Logger.log(`📋 Loading template file: ${templateFileName} for type: ${templateType}`);
+
 
     // Load the template - no fallback, only use actual template files
     const templateContent = await loadTemplateFromAssets(templateFileName);
@@ -59,12 +57,15 @@ export const loadHTMLTemplate = async (templateType: TemplateType = 'default'): 
       throw new Error(`Template ${templateFileName} is empty`);
     }
 
-    console.log(`✅ Successfully loaded template: ${templateType} (${templateContent.length} chars)`);
-    console.log(`📄 Template file used: ${templateFileName}`);
+    Logger.log(`✅ Successfully loaded template: ${templateType} (${templateContent.length} chars)`);
+
+    Logger.log(`📄 Template file used: ${templateFileName}`);
+
     return templateContent;
 
   } catch (error) {
-    console.error(`❌ Error loading template "${templateType}":`, error);
+    Logger.error(`❌ Error loading template "${templateType}":`, error);
+
     throw error;
   }
 };
@@ -73,10 +74,12 @@ export const loadHTMLTemplate = async (templateType: TemplateType = 'default'): 
  * Process template by replacing placeholders with actual data
  */
 export const processHTMLTemplate = (template: string, data: TemplateData, templateType: TemplateType = 'default'): string => {
-  console.log(`🔧 Processing template. Type: ${templateType}, Template length: ${template?.length || 'undefined'}`);
+  Logger.log(`🔧 Processing template. Type: ${templateType}, Template length: ${template?.length || 'undefined'}`);
+
 
   if (!template) {
-    console.error('❌ Template is undefined in processHTMLTemplate!');
+    Logger.error('❌ Template is undefined in processHTMLTemplate!');
+
     throw new Error('Template is undefined');
   }
 
@@ -173,12 +176,14 @@ export const generateInvoiceHTMLFromTemplate = async (
   templateType: TemplateType = 'default'
 ): Promise<string> => {
   try {
-    console.log(`🚀 Starting HTML generation for template: ${templateType}`);
-    console.log(`📊 Items count: ${data.ITEMS.length}`);
+    Logger.log(`🚀 Starting HTML generation for template: ${templateType}`);
+    Logger.log(`📊 Items count: ${data.ITEMS.length}`);
+
 
     // Load the template
     const template = await loadHTMLTemplate(templateType);
-    console.log(`🔧 Template loaded. Length: ${template?.length || 'undefined'}, Type: ${typeof template}`);
+    Logger.log(`🔧 Template loaded. Length: ${template?.length || 'undefined'}, Type: ${typeof template}`);
+
 
     if (!template) {
       throw new Error('Template is undefined after loading');
@@ -187,13 +192,15 @@ export const generateInvoiceHTMLFromTemplate = async (
     // Process placeholders with template-specific formatting
     const processedHTML = processHTMLTemplate(template, data, templateType);
 
-    console.log(`✅ HTML generation complete!`);
-    console.log(`📄 Final HTML size: ${processedHTML.length} characters`);
-    console.log(`💾 Estimated size: ${Math.round(processedHTML.length / 1024)} KB`);
+    Logger.log(`✅ HTML generation complete!`);
+    Logger.log(`📄 Final HTML size: ${processedHTML.length} characters`);
+    Logger.log(`💾 Estimated size: ${Math.round(processedHTML.length / 1024)} KB`);
+
 
     return processedHTML;
   } catch (error) {
-    console.error('❌ Error generating invoice HTML from template:', error);
+    Logger.error('❌ Error generating invoice HTML from template:', error);
+
     throw error;
   }
 };

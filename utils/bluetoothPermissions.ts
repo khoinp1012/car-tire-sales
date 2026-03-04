@@ -1,3 +1,4 @@
+import { Logger } from "./logger";
 import { Platform, PermissionsAndroid, Alert, Linking } from 'react-native';
 
 /**
@@ -11,7 +12,7 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
 
   try {
     const androidVersion = Platform.Version;
-    console.log(`[BLUETOOTH PERMISSIONS] Android version: ${androidVersion}`);
+    Logger.log(`[BLUETOOTH PERMISSIONS] Android version: ${androidVersion}`);
 
     if (androidVersion >= 31) {
       // Android 12+ (API 31+) - Request new Bluetooth permissions
@@ -27,8 +28,8 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
         result => result === PermissionsAndroid.RESULTS.GRANTED
       );
 
-      console.log('[BLUETOOTH PERMISSIONS] Android 12+ results:', results);
-      console.log('[BLUETOOTH PERMISSIONS] All granted:', allGranted);
+      Logger.log('[BLUETOOTH PERMISSIONS] Android 12+ results:', results);
+      Logger.log('[BLUETOOTH PERMISSIONS] All granted:', allGranted);
 
       if (!allGranted) {
         Alert.alert(
@@ -56,8 +57,8 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
         result => result === PermissionsAndroid.RESULTS.GRANTED
       );
 
-      console.log('[BLUETOOTH PERMISSIONS] Android <12 results:', results);
-      console.log('[BLUETOOTH PERMISSIONS] All granted:', allGranted);
+      Logger.log('[BLUETOOTH PERMISSIONS] Android <12 results:', results);
+      Logger.log('[BLUETOOTH PERMISSIONS] All granted:', allGranted);
 
       if (!allGranted) {
         Alert.alert(
@@ -74,7 +75,7 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
       return true;
     }
   } catch (error) {
-    console.error('[BLUETOOTH PERMISSIONS] Error requesting permissions:', error);
+    Logger.error('[BLUETOOTH PERMISSIONS] Error requesting permissions:', error);
     Alert.alert(
       'Permission Error',
       'Failed to request Bluetooth permissions. Please try again or check app settings.'
@@ -119,7 +120,7 @@ export async function checkBluetoothPermissions(): Promise<boolean> {
       return results.every(granted => granted);
     }
   } catch (error) {
-    console.error('[BLUETOOTH PERMISSIONS] Error checking permissions:', error);
+    Logger.error('[BLUETOOTH PERMISSIONS] Error checking permissions:', error);
     return false;
   }
 }

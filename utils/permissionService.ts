@@ -15,8 +15,7 @@ import {
     PermissionAction,
     CollectionName,
     UserPermissionContext,
-    PermissionCheckResult,
-    RowPermissionRule
+    PermissionCheckResult
 } from '@/types/permissions';
 import { getUserRole } from './userRoleService';
 

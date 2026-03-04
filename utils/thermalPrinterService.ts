@@ -1,7 +1,6 @@
-import { Alert, Platform, PermissionsAndroid } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
-import { Buffer } from 'buffer';
-import { requestBluetoothPermissions, checkBluetoothPermissions } from './bluetoothPermissions';
+import { Alert, Platform } from 'react-native';
+import { requestBluetoothPermissions } from './bluetoothPermissions';
+import { Logger } from './logger';
 
 /**
  * Comprehensive Thermal Printer Service
@@ -15,9 +14,9 @@ let BLEPrinter: any = null;
 try {
   const thermalLib = require('react-native-thermal-receipt-printer-image-qr');
   BLEPrinter = thermalLib.BLEPrinter;
-  console.log('[THERMAL LIB] Thermal printer library loaded successfully, BLEPrinter available:', !!BLEPrinter);
+  Logger.log('[THERMAL LIB] Thermal printer library loaded successfully, BLEPrinter available:', !!BLEPrinter);
 } catch (e) {
-  console.warn('[THERMAL LIB] Thermal printer library not available:', e);
+  Logger.warn('[THERMAL LIB] Thermal printer library not available:', e);
   BLEPrinter = null;
 }
 
@@ -58,18 +57,18 @@ export async function requestThermalPrinterPermissions(setDebug?: (msg: string) 
  */
 export async function initializeThermalPrinter(setDebug?: (msg: string) => void): Promise<boolean> {
   if (!BLEPrinter) {
-    console.log('[INIT] BLEPrinter not available - thermal printer library not loaded');
+    Logger.log('[INIT] BLEPrinter not available - thermal printer library not loaded');
     setDebug?.('BLEPrinter not available - thermal printer library not loaded');
     return false;
   }
-  
+
   try {
     await BLEPrinter.init();
-    console.log('[INIT] Thermal printer initialized successfully');
+    Logger.log('[INIT] Thermal printer initialized successfully');
     setDebug?.('Thermal printer initialized successfully');
     return true;
   } catch (error) {
-    console.log('[INIT] Failed to initialize thermal printer:', error);
+    Logger.log('[INIT] Failed to initialize thermal printer:', error);
     setDebug?.('Failed to initialize thermal printer: ' + String(error));
     return false;
   }
@@ -83,7 +82,7 @@ export async function scanThermalPrinters(setDebug?: (msg: string) => void): Pro
     setDebug?.('BLEPrinter not available');
     return [];
   }
-  
+
   try {
     await BLEPrinter.init();
     const devices = await BLEPrinter.getDeviceList();
@@ -103,12 +102,12 @@ export async function connectThermalPrinter(device: ThermalDevice, setDebug?: (m
     setDebug?.('BLEPrinter not available');
     return false;
   }
-  
+
   if (!device?.inner_mac_address) {
     setDebug?.('Invalid device - no MAC address');
     return false;
   }
-  
+
   try {
     await BLEPrinter.connectPrinter(device.inner_mac_address);
     setDebug?.(`Connected to printer: ${device.device_name || device.name || device.inner_mac_address}`);
@@ -123,8 +122,8 @@ export async function connectThermalPrinter(device: ThermalDevice, setDebug?: (m
  * Print text to thermal printer
  */
 export async function printThermalText(
-  device: ThermalDevice, 
-  text: string, 
+  device: ThermalDevice,
+  text: string,
   options: PrintOptions = {},
   setDebug?: (msg: string) => void,
   showAlert: boolean = true
@@ -133,13 +132,13 @@ export async function printThermalText(
     if (showAlert) Alert.alert('Error', 'No thermal printer device selected');
     return false;
   }
-  
+
   if (!BLEPrinter) {
     setDebug?.('BLEPrinter not available');
     if (showAlert) Alert.alert('Error', 'Thermal printer not available');
     return false;
   }
-  
+
   try {
     // Connect to printer
     const connected = await connectThermalPrinter(device, setDebug);
@@ -147,10 +146,10 @@ export async function printThermalText(
       if (showAlert) Alert.alert('Error', 'Failed to connect to thermal printer');
       return false;
     }
-    
+
     // Print the text
     await BLEPrinter.printText(text, options);
-    
+
     setDebug?.(`Text printed successfully: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`);
     if (showAlert) Alert.alert('Success', 'Text sent to thermal printer successfully');
     return true;
@@ -176,20 +175,20 @@ export async function printThermalQR(
     if (showAlert) Alert.alert('Error', 'No thermal printer device selected');
     return false;
   }
-  
+
   if (!BLEPrinter) {
     setDebug?.('BLEPrinter not available');
     if (showAlert) Alert.alert('Error', 'Thermal printer not available');
     return false;
   }
-  
+
   if (!qrElement || !qrElement.toDataURL) {
     if (showAlert) Alert.alert('Error', 'QR code element not available or invalid');
     return false;
   }
-  
+
   const { width = 200, height = 200 } = options;
-  
+
   try {
     // Connect to printer
     const connected = await connectThermalPrinter(device, setDebug);
@@ -197,7 +196,7 @@ export async function printThermalQR(
       if (showAlert) Alert.alert('Error', 'Failed to connect to thermal printer');
       return false;
     }
-    
+
     // Convert QR to image and print
     return new Promise((resolve) => {
       qrElement.toDataURL(async (dataURL: string) => {
@@ -207,12 +206,12 @@ export async function printThermalQR(
             resolve(false);
             return;
           }
-          
-          await BLEPrinter.printImageBase64(dataURL, { 
-            imageWidth: width, 
-            imageHeight: height 
+
+          await BLEPrinter.printImageBase64(dataURL, {
+            imageWidth: width,
+            imageHeight: height
           });
-          
+
           setDebug?.(`QR code printed successfully. Size: ${width}x${height}`);
           if (showAlert) Alert.alert('Success', `QR code sent to thermal printer. Size: ${width}x${height}`);
           resolve(true);
@@ -238,14 +237,15 @@ export async function printThermalQR(
 export async function printThermalQRFromString(
   device: ThermalDevice,
   qrValue: string,
-  options: QROptions = {},
+  _options: QROptions = {},
   setDebug?: (msg: string) => void
 ): Promise<boolean> {
+
   if (!qrValue) {
     Alert.alert('Error', 'QR code value is required');
     return false;
   }
-  
+
   // This would need to be implemented if you want to create QR codes internally
   // For now, we expect the QR element to be passed from the component
   setDebug?.('printThermalQRFromString not implemented - use printThermalQR with QR element');
@@ -269,10 +269,10 @@ export async function printInventoryLabel(
   setDebug?: (msg: string) => void
 ): Promise<boolean> {
   const { sequence, brand, size, unitPrice, radiusSize } = inventoryData;
-  
+
   // Enhanced debugging for emulator testing
-  console.log('=== THERMAL PRINTER SERVICE DEBUG ===');
-  console.log('printInventoryLabel called with:', {
+  Logger.log('=== THERMAL PRINTER SERVICE DEBUG ===');
+  Logger.log('printInventoryLabel called with:', {
     device: device ? {
       name: device.device_name || device.name,
       mac: device.inner_mac_address
@@ -281,7 +281,7 @@ export async function printInventoryLabel(
     qrElementAvailable: !!qrElement,
     BLEPrinterAvailable: !!BLEPrinter
   });
-  
+
   // Format the inventory text in Vietnamese
   let inventoryText = 'NHAN KHO HANG\n';
   inventoryText += '================\n';
@@ -291,64 +291,64 @@ export async function printInventoryLabel(
   inventoryText += `Kich thuoc: ${size}\n`;
   if (unitPrice) inventoryText += `Gia ban: ${unitPrice} VND\n`;
   if (radiusSize) inventoryText += `Kich thuoc mam: ${radiusSize}\n`;
-  
+
   inventoryText += '================\n';
-  
-  console.log('=== FORMATTED PRINT TEXT ===');
-  console.log(inventoryText);
-  console.log('============================');
-  
+
+  Logger.log('=== FORMATTED PRINT TEXT ===');
+  Logger.log(inventoryText);
+  Logger.log('============================');
+
   // If BLEPrinter is not available, return false (no fake success)
   if (!BLEPrinter) {
-    console.log('[THERMAL SERVICE] BLEPrinter not available - cannot print');
+    Logger.log('[THERMAL SERVICE] BLEPrinter not available - cannot print');
     setDebug?.('BLEPrinter not available - thermal printer library not loaded');
     Alert.alert('Error', 'Thermal printer not available');
     return false;
   }
-  
+
   try {
     // Print logo first if provided
     if (logoElement) {
-      console.log('[THERMAL SERVICE] Printing company logo...');
+      Logger.log('[THERMAL SERVICE] Printing company logo...');
       const logoSuccess = await printThermalQR(device, logoElement, { width: 150, height: 80 }, setDebug, false);
       if (logoSuccess) {
-        console.log('[THERMAL SERVICE] Logo printed successfully');
+        Logger.log('[THERMAL SERVICE] Logo printed successfully');
         // Add spacing after logo
         await printThermalText(device, '\n', {}, setDebug, false);
       }
     }
-    
+
     // Print QR code SECOND if provided
     if (qrElement) {
-      console.log('[THERMAL SERVICE] Printing QR code...');
+      Logger.log('[THERMAL SERVICE] Printing QR code...');
       const qrSuccess = await printThermalQR(device, qrElement, { width: 200, height: 200 }, setDebug, false);
       if (!qrSuccess) {
         setDebug?.('QR code printing failed, continuing with text...');
-        console.log('[THERMAL SERVICE] QR code printing failed');
+        Logger.log('[THERMAL SERVICE] QR code printing failed');
       } else {
-        console.log('[THERMAL SERVICE] QR code printed successfully');
+        Logger.log('[THERMAL SERVICE] QR code printed successfully');
         // Add some spacing after QR code
         await printThermalText(device, '\n', {}, setDebug, false);
       }
     }
-    
+
     // Then print the Vietnamese text
-    console.log('[THERMAL SERVICE] Printing Vietnamese text...');
+    Logger.log('[THERMAL SERVICE] Printing Vietnamese text...');
     const textSuccess = await printThermalText(device, inventoryText, {}, setDebug, false);
-    
+
     if (textSuccess) {
-      console.log('[THERMAL SERVICE] Vietnamese text printed successfully');
+      Logger.log('[THERMAL SERVICE] Vietnamese text printed successfully');
       setDebug?.('Nhãn kho hàng đã được in thành công');
       Alert.alert('Thành công', 'Nhãn kho hàng đã được in thành công');
       return true;
     }
-    
-    console.log('[THERMAL SERVICE] Text printing failed');
+
+    Logger.log('[THERMAL SERVICE] Text printing failed');
     Alert.alert('Lỗi', 'Không thể in văn bản');
     return false;
   } catch (error) {
     const errorMessage = 'Không thể in nhãn kho hàng: ' + String(error);
-    console.error('[THERMAL SERVICE] Print error:', error);
+    Logger.error('[THERMAL SERVICE] Print error:', error);
     setDebug?.(errorMessage);
     Alert.alert('Lỗi in', errorMessage);
     return false;
@@ -369,7 +369,7 @@ export async function printTestLabel(
     unitPrice: '1,500,000',
     radiusSize: '16'
   };
-  
+
   return printInventoryLabel(device, testData, undefined, undefined, setDebug);
 }
 
@@ -381,39 +381,39 @@ export async function setupThermalPrinter(setDebug?: (msg: string) => void): Pro
   success: boolean;
   devices: ThermalDevice[];
 }> {
-  console.log('=== THERMAL PRINTER SETUP DEBUG ===');
+  Logger.log('=== THERMAL PRINTER SETUP DEBUG ===');
   setDebug?.('Starting thermal printer setup...');
-  
+
   // Check if thermal printer library is available first
   if (!BLEPrinter) {
-    console.log('[SETUP] BLEPrinter not available - thermal printer library not loaded');
+    Logger.log('[SETUP] BLEPrinter not available - thermal printer library not loaded');
     setDebug?.('Thermal printer library not available - no real printer support');
     return { success: false, devices: [] };
   }
-  
+
   // Request permissions
-  console.log('[SETUP] Requesting permissions...');
+  Logger.log('[SETUP] Requesting permissions...');
   const permissionsGranted = await requestThermalPrinterPermissions(setDebug);
   if (!permissionsGranted) {
-    console.log('[SETUP] Permissions not granted');
+    Logger.log('[SETUP] Permissions not granted');
     setDebug?.('Thermal printer setup failed: permissions not granted');
     return { success: false, devices: [] };
   }
-  
+
   // Initialize printer
-  console.log('[SETUP] Initializing printer...');
+  Logger.log('[SETUP] Initializing printer...');
   const initialized = await initializeThermalPrinter(setDebug);
   if (!initialized) {
-    console.log('[SETUP] Initialization failed');
+    Logger.log('[SETUP] Initialization failed');
     setDebug?.('Thermal printer setup failed: initialization failed');
     return { success: false, devices: [] };
   }
-  
+
   // Scan for devices
-  console.log('[SETUP] Scanning for devices...');
+  Logger.log('[SETUP] Scanning for devices...');
   const devices = await scanThermalPrinters(setDebug);
-  
-  console.log(`[SETUP] Setup completed. Found ${devices.length} device(s):`, devices);
+
+  Logger.log(`[SETUP] Setup completed. Found ${devices.length} device(s):`, devices);
   setDebug?.(`Thermal printer setup completed. Found ${devices.length} device(s)`);
   return { success: true, devices };
 }

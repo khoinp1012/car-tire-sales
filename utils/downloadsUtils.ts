@@ -1,3 +1,4 @@
+import { Logger } from "./logger";
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
@@ -53,7 +54,7 @@ export const saveToDownloads = async (
           };
         }
       } catch (error) {
-        console.warn('MediaLibrary method failed, trying alternative approach:', error);
+        Logger.warn('MediaLibrary method failed, trying alternative approach:', error);
         
         // Alternative approach: Try to save directly to Downloads using FileSystem
         try {
@@ -70,7 +71,7 @@ export const saveToDownloads = async (
             appPath: sourceUri
           };
         } catch (directError) {
-          console.warn('Direct Downloads access failed:', directError);
+          Logger.warn('Direct Downloads access failed:', directError);
           
           // Final fallback - save to app directory
           const newPath = `${FileSystem.documentDirectory}${filename}`;
@@ -103,7 +104,7 @@ export const saveToDownloads = async (
       };
     }
   } catch (error) {
-    console.error('Error saving file:', error);
+    Logger.error('Error saving file:', error);
     
     // Final fallback - try to save to app directory
     try {
@@ -120,7 +121,7 @@ export const saveToDownloads = async (
         appPath: newPath
       };
     } catch (fallbackError) {
-      console.error('All save methods failed:', fallbackError);
+      Logger.error('All save methods failed:', fallbackError);
       return {
         success: false,
         path: sourceUri,
@@ -143,7 +144,7 @@ export const checkDownloadsPermission = async (): Promise<boolean> => {
     const { status } = await MediaLibrary.getPermissionsAsync();
     return status === 'granted';
   } catch (error) {
-    console.error('Error checking Downloads permission:', error);
+    Logger.error('Error checking Downloads permission:', error);
     return false;
   }
 };
@@ -160,7 +161,7 @@ export const requestDownloadsPermission = async (): Promise<boolean> => {
     const { status } = await MediaLibrary.requestPermissionsAsync();
     return status === 'granted';
   } catch (error) {
-    console.error('Error requesting Downloads permission:', error);
+    Logger.error('Error requesting Downloads permission:', error);
     return false;
   }
 };

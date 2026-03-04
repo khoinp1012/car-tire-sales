@@ -19,6 +19,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { account } from '@/constants/appwrite';
 import { canAccessCollection, canAccessRoute } from '@/utils/permissionService';
 import { PermissionAction, CollectionName } from '@/types/permissions';
+import { Logger } from '@/utils/logger';
 
 interface PermissionGuardProps {
     children: React.ReactNode;
@@ -40,11 +41,7 @@ export function PermissionGuard({
     const [allowed, setAllowed] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        checkPermission();
-    }, [collection, action, route]);
-
-    const checkPermission = async () => {
+    const checkPermission = React.useCallback(async () => {
         try {
             setLoading(true);
 
@@ -65,12 +62,16 @@ export function PermissionGuard({
 
             setAllowed(hasPermission);
         } catch (error) {
-            console.error('[PermissionGuard] Error checking permission:', error);
+            Logger.error('[PermissionGuard] Error checking permission:', error);
             setAllowed(false);
         } finally {
             setLoading(false);
         }
-    };
+    }, [collection, action, route]);
+
+    useEffect(() => {
+        checkPermission();
+    }, [checkPermission]);
 
     if (loading) {
         if (showLoading) {

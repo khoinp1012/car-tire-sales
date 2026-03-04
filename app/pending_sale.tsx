@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Alert, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Databases, Query } from 'react-native-appwrite';
 import appwrite, { DATABASE_ID, INVENTORY_COLLECTION_ID } from '@/constants/appwrite';
-import ThemedButton from '@/components/ThemedButton';
 import SuccessPopup from '@/components/SuccessPopup';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Logger } from '@/utils/logger';
 import i18n from '@/constants/i18n';
 import { useLanguage } from '@/components/LanguageContext';
 import { QR_PREFIXES } from '@/constants/config';
 
 // This page sets pending_sale=1 for an inventory item by QR scan
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#fff' },
-  info: { fontSize: 16, marginVertical: 8 },
-});
+// This page sets pending_sale=1 for an inventory item by QR scan
 
 function PendingSaleContent() {
   const [loading, setLoading] = useState(true);
@@ -26,16 +23,7 @@ function PendingSaleContent() {
   const router = useRouter();
   const scannedValue = params.scanned as string;
 
-  useEffect(() => {
-    if (scannedValue) {
-      handleSetPendingSale(scannedValue);
-    } else {
-      setError(i18n.t('noQRCodeScanned', { locale: lang }));
-      setLoading(false);
-    }
-  }, [scannedValue]);
-
-  const handleSetPendingSale = async (qrValue: string) => {
+  const handleSetPendingSale = React.useCallback(async (qrValue: string) => {
     setLoading(true);
     try {
       const databases = new Databases(appwrite);
@@ -85,12 +73,21 @@ function PendingSaleContent() {
         setError(i18n.t('noInventoryItemFound', { locale: lang, sequence }));
       }
     } catch (e) {
-      console.error('[PendingSaleScreen] Error updating pending_sale:', e);
+      Logger.error('[PendingSaleScreen] Error updating pending_sale:', e);
       setError(i18n.t('failedToUpdatePendingSale', { locale: lang }));
     } finally {
       setLoading(false);
     }
-  };
+  }, [lang, router]);
+
+  useEffect(() => {
+    if (scannedValue) {
+      handleSetPendingSale(scannedValue);
+    } else {
+      setError(i18n.t('noQRCodeScanned', { locale: lang }));
+      setLoading(false);
+    }
+  }, [scannedValue, handleSetPendingSale, lang]);
 
   if (loading) {
     return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" /><Text>{i18n.t('processing', { locale: lang })}</Text></View>;

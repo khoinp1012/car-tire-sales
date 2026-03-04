@@ -1,5 +1,6 @@
 import { Model } from '@nozbe/watermelondb';
-import { field, text, readonly, date, children, action } from '@nozbe/watermelondb/decorators';
+import { field, text, readonly, date } from '@nozbe/watermelondb/decorators';
+
 
 export class Inventory extends Model {
     static table = 'inventory';

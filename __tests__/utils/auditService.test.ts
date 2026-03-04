@@ -9,7 +9,10 @@ describe('Autonomous Auditing System', () => {
         let mockRes: any;
         let mockLog: jest.Mock;
         let mockError: jest.Mock;
-        let mockDatabases: any;
+
+
+
+
 
         beforeEach(() => {
             jest.clearAllMocks();
@@ -21,9 +24,9 @@ describe('Autonomous Auditing System', () => {
                 json: jest.fn((data, status?) => ({ data, status }))
             };
 
-            mockDatabases = {
-                createDocument: jest.fn()
-            };
+
+
+
 
             // Reset environment variables
             process.env.APPWRITE_FUNCTION_PROJECT_ID = 'test_project';

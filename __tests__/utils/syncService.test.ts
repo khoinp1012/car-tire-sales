@@ -67,11 +67,11 @@ import {
     performCriticalSync,
     performHighPrioritySync,
     performMediumPrioritySync,
-    performFullSync,
     hasPermissionConfig,
     setOfflineMode,
     getOfflineMode
 } from '@/utils/syncService';
+
 
 describe('syncService', () => {
     let mockDb: any;

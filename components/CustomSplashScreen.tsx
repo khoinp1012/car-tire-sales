@@ -20,8 +20,8 @@ export default function CustomSplashScreen({ onFinish }: CustomSplashScreenProps
     const startAnimation = async () => {
       // Hide the native splash screen
       await SplashScreen.hideAsync();
-      
-            // Start logo animation
+
+      // Start logo animation
       Animated.sequence([
         Animated.timing(logoOpacity, {
           toValue: 1,
@@ -35,13 +35,13 @@ export default function CustomSplashScreen({ onFinish }: CustomSplashScreenProps
     };
 
     startAnimation();
-  }, []);
+  }, [onFinish, logoOpacity]);
 
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.logoContainer, { opacity: logoOpacity }]}>
-        <Image 
-          source={require('@/assets/images/logo.png')} 
+        <Image
+          source={require('@/assets/images/logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />

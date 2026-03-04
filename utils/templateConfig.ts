@@ -1,6 +1,7 @@
 // Template switching utility for easy testing and customization
 import { TemplateType } from './templateUtils';
 import { TEMPLATE_CONFIG as APP_TEMPLATE_CONFIG } from '@/constants/config';
+import { Logger } from './logger';
 
 /**
  * Configuration for which template to use
@@ -53,10 +54,10 @@ export const getTemplateInfo = (templateType: TemplateType) => {
  * Print template options for debugging
  */
 export const logAvailableTemplates = () => {
-  console.log('📄 Available Invoice Templates:');
+  Logger.log('📄 Available Invoice Templates:');
   TEMPLATE_CONFIG.availableTemplates.forEach(template => {
     const isCurrent = template.type === TEMPLATE_CONFIG.defaultTemplate;
-    console.log(`${isCurrent ? '✅' : '📄'} ${template.name} (${template.type}): ${template.description}`);
+    Logger.log(`${isCurrent ? '✅' : '📄'} ${template.name} (${template.type}): ${template.description}`);
   });
-  console.log(`\n🎯 Current template: ${TEMPLATE_CONFIG.defaultTemplate}`);
+  Logger.log(`\n🎯 Current template: ${TEMPLATE_CONFIG.defaultTemplate}`);
 };

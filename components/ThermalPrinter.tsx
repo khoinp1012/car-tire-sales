@@ -38,17 +38,7 @@ export default function ThermalPrinter({
 
   const testQrRef = useRef<any>(null);
 
-  useEffect(() => {
-    initializePrinter();
-  }, []);
-
-  useEffect(() => {
-    if (onDeviceSelected) {
-      onDeviceSelected(selectedDevice);
-    }
-  }, [selectedDevice, onDeviceSelected]);
-
-  const initializePrinter = async () => {
+  const initializePrinter = React.useCallback(async () => {
     setLoading(true);
     setDebug('Initializing thermal printer...');
 
@@ -68,7 +58,17 @@ export default function ThermalPrinter({
       setDebug(i18n.t('setupFailed', { locale: lang }));
     }
     setLoading(false);
-  };
+  }, [lang]);
+
+  useEffect(() => {
+    initializePrinter();
+  }, [initializePrinter]);
+
+  useEffect(() => {
+    if (onDeviceSelected) {
+      onDeviceSelected(selectedDevice);
+    }
+  }, [selectedDevice, onDeviceSelected]);
 
   const handleDeviceSelect = (device: ThermalDevice) => {
     setSelectedDevice(device);
