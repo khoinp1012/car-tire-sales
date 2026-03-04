@@ -33,6 +33,11 @@ jobs:
         run: npx eslint --ext .ts,.tsx . --max-warnings 0
 
       - name: Native Prebuild Sanity
-        run: CI=1 npx expo prebuild --platform android --no-install
+        run: |
+          if [ ! -f google-services.json ]; then
+            echo '{"project_info":{"project_number":"1","project_id":"mock-project"},"client":[{"client_info":{"mobilesdk_app_id":"1:1:android:1","android_client_info":{"package_name":"com.toanthang.tiresales"}}}]}' > google-services.json
+          fi
+          CI=1 npx expo prebuild --platform android --no-install
+
 
 
