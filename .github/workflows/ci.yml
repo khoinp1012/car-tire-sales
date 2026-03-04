@@ -29,11 +29,10 @@ jobs:
       - name: Run tests
         run: npm run test:ci
 
-      - name: Lint (if configured)
-        run: |
-          if grep -q "\"eslint\"" package.json || [ -f .eslintrc ] || [ -f .eslintrc.js ] || [ -f .eslintrc.json ]; then
-            echo "Running eslint"
-            npx eslint --ext .ts,.tsx .
-          else
-            echo "No eslint configured — skipping lint"
-          fi
+      - name: Lint
+        run: npx eslint --ext .ts,.tsx . --max-warnings 0
+
+      - name: Native Prebuild Sanity
+        run: CI=1 npx expo prebuild --platform android --no-install
+
+
