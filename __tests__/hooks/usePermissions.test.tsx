@@ -2,11 +2,6 @@ jest.mock('@/constants/appwrite', () => ({
     account: {
         get: jest.fn(),
     },
-    databases: {
-        listDocuments: jest.fn(),
-        createDocument: jest.fn(),
-        updateDocument: jest.fn(),
-    },
     DATABASE_ID: 'test_db',
     USER_ROLES_COLLECTION_ID: 'test_roles_collection',
     PERMISSION_CONFIG_COLLECTION_ID: 'permission_config',
@@ -18,6 +13,8 @@ jest.mock('@/constants/appwrite', () => ({
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { usePermissions } from '@/hooks/usePermissions';
 import { account } from '@/constants/appwrite';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
 
 // Mock the services used by the hook
 jest.mock('@/utils/permissionService', () => ({
@@ -36,6 +33,9 @@ import { getUserPermissionContext, canAccessCollection } from '@/utils/permissio
 import { getUserRole, initializeUserRecord } from '@/utils/userRoleService';
 
 describe('usePermissions hook', () => {
+    let queryClient: QueryClient;
+    let wrapper: React.FC<{ children: React.ReactNode }>;
+
     const mockUser = { $id: 'user123', name: 'Test User' };
     const mockContext = {
         userId: 'user123',
@@ -47,17 +47,30 @@ describe('usePermissions hook', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+
+        queryClient = new QueryClient({
+            defaultOptions: {
+                queries: {
+                    retry: false,
+                    staleTime: 0, // Ensure we don't use stale data
+                },
+            },
+        });
+
+        wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+
         (account.get as jest.Mock).mockResolvedValue(mockUser);
         (initializeUserRecord as jest.Mock).mockResolvedValue(undefined);
         (getUserRole as jest.Mock).mockResolvedValue('admin');
         (getUserPermissionContext as jest.Mock).mockResolvedValue(mockContext);
 
-        // Debug: verify mocks are assigned
         console.log('Mock setup complete');
     });
 
     it('should initialize with user info and permissions', async () => {
-        const { result } = renderHook(() => usePermissions());
+        const { result } = renderHook(() => usePermissions(), { wrapper });
 
         await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -70,7 +83,7 @@ describe('usePermissions hook', () => {
     it('should handle errors during initialization', async () => {
         (account.get as jest.Mock).mockRejectedValue(new Error('Auth error'));
 
-        const { result } = renderHook(() => usePermissions());
+        const { result } = renderHook(() => usePermissions(), { wrapper });
 
         await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -80,20 +93,20 @@ describe('usePermissions hook', () => {
     it('should check collection access', async () => {
         (canAccessCollection as jest.Mock).mockResolvedValue({ allowed: true });
 
-        const { result } = renderHook(() => usePermissions());
+        const { result } = renderHook(() => usePermissions(), { wrapper });
         await waitFor(() => expect(result.current.loading).toBe(false));
 
-        const allowed = await result.current.canAccess('inventory', 'create');
+        const allowed = await result.current.canAccess('sales' as any, 'create');
         expect(allowed).toBe(true);
-        expect(canAccessCollection).toHaveBeenCalledWith('user123', 'inventory', 'create');
+        expect(canAccessCollection).toHaveBeenCalledWith('user123', 'sales', 'create');
     });
 
     it('should provide synchronous route check after loading', async () => {
-        const { result } = renderHook(() => usePermissions());
+        const { result } = renderHook(() => usePermissions(), { wrapper });
         await waitFor(() => expect(result.current.loading).toBe(false));
 
-        expect(result.current.canAccessRoute('inventory')).toBe(true);
-        expect(result.current.canAccessRoute('forbidden')).toBe(false);
+        expect(await result.current.canAccessRoute('inventory')).toBe(true);
+        expect(await result.current.canAccessRoute('forbidden')).toBe(false);
     });
 
     it('should allow access to all routes when wildcard * is present', async () => {
@@ -103,15 +116,15 @@ describe('usePermissions hook', () => {
         };
         (getUserPermissionContext as jest.Mock).mockResolvedValue(wildcardContext);
 
-        const { result } = renderHook(() => usePermissions());
+        const { result } = renderHook(() => usePermissions(), { wrapper });
         await waitFor(() => expect(result.current.loading).toBe(false));
 
-        expect(result.current.canAccessRoute('any_route')).toBe(true);
-        expect(result.current.canAccessRoute('other_route')).toBe(true);
+        expect(await result.current.canAccessRoute('any_route')).toBe(true);
+        expect(await result.current.canAccessRoute('other_route')).toBe(true);
     });
 
     it('should refresh permissions when requested', async () => {
-        const { result } = renderHook(() => usePermissions());
+        const { result } = renderHook(() => usePermissions(), { wrapper });
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         jest.clearAllMocks();

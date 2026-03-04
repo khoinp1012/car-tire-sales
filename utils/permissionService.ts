@@ -263,5 +263,225 @@ export async function checkRoutePermission(userId: string, routeName: string): P
     }
 }
 
+/**
+ * Check if user has a specific feature enabled
+ * OFFLINE-FIRST: Uses local database
+ */
+export async function hasFeature(userId: string, featureName: string): Promise<boolean> {
+    try {
+        const context = await getUserPermissionContext(userId);
+        if (!context) return false;
+
+        // Admin has access to everything
+        if (context.role === 'admin') return true;
+
+        return context.features.includes('*') || context.features.includes(featureName);
+    } catch (error) {
+        console.error('[PermissionService] Error checking feature:', error);
+        return false;
+    }
+}
+
+/**
+ * Generate Appwrite permission strings for a document based on collection settings
+ */
+export async function generateDocumentPermissions(
+    collection: CollectionName,
+    ownerId?: string
+): Promise<string[]> {
+    try {
+        const config = await getActivePermissionConfig();
+        if (!config) return [];
+
+        const permissions = config.collectionPermissions[collection];
+        if (!permissions) return ownerId ? [`read(user:${ownerId})`, `update(user:${ownerId})`, `delete(user:${ownerId})`] : [];
+
+        const result: string[] = [];
+
+        // Add role-based permissions
+        Object.entries(permissions).forEach(([action, roles]) => {
+            if (Array.isArray(roles)) {
+                roles.forEach(role => {
+                    result.push(`${action}(label:role:${role})`);
+                });
+            }
+        });
+
+        // Add owner permissions if ownerId is provided
+        if (ownerId) {
+            result.push(`read(user:${ownerId})`);
+            result.push(`update(user:${ownerId})`);
+            result.push(`delete(user:${ownerId})`);
+        }
+
+        return result;
+    } catch (error) {
+        console.error('[PermissionService] Error generating document permissions:', error);
+        return [];
+    }
+}
+
+// Aliases for compatibility with other parts of the app
+export const canAccessCollection = checkPermission;
+export const canAccessRoute = checkRoutePermission;
+
+/**
+ * Save permission configuration to local database
+ * OFFLINE-FIRST: Updates local DB, syncs later
+ */
+export async function savePermissionConfig(config: PermissionConfig): Promise<boolean> {
+    try {
+        console.log('[PermissionService] Saving permission config to LOCAL DB...');
+        const db = getDatabase();
+
+        // 1. Deactivate current config
+        const activeConfigs = await db.get<PermissionConfigModel>('permission_config')
+            .query(Q.where('is_active', true))
+            .fetch();
+
+        await db.write(async () => {
+            const updates = activeConfigs.map(c =>
+                c.prepareUpdate(record => {
+                    record.isActive = false;
+                })
+            );
+            await db.batch(...updates);
+
+            // 2. Create new config or update existing
+            // For now, we'll create a new one to maintain history
+            await db.get<PermissionConfigModel>('permission_config').create(record => {
+                record.configVersion = config.version;
+                record.isActive = true;
+                record.roles = JSON.stringify(config.roles);
+                record.collectionPermissions = JSON.stringify(config.collectionPermissions);
+                record.rowPermissions = JSON.stringify(config.rowPermissions);
+                record.appwriteId = config.$id || '';
+                record.version = 1;
+                record.deleted = false;
+            });
+        });
+
+        console.log('[PermissionService] Successfully saved config to LOCAL DB');
+        return true;
+    } catch (error) {
+        console.error('[PermissionService] Error saving permission config:', error);
+        return false;
+    }
+}
+
+/**
+ * Build Appwrite query filters for row-level permissions
+ */
+export async function buildRowPermissionFilters(
+    userId: string,
+    collection: CollectionName,
+    action: PermissionAction
+): Promise<string[]> {
+    try {
+        const context = await getUserPermissionContext(userId);
+        if (!context) return [];
+
+        // Admin sees everything
+        if (context.role === 'admin') return [];
+
+        const config = await getActivePermissionConfig();
+        if (!config) return [];
+
+        // Find applicable row permission rules
+        const rules = config.rowPermissions.filter(
+            r => r.collection === collection && r.role === context.role && r.action === action
+        );
+
+        if (rules.length === 0) return [];
+
+        const filters: string[] = [];
+        rules.forEach(rule => {
+            if (rule.condition === 'own_documents' && rule.ownershipField) {
+                filters.push(`equal(${rule.ownershipField}, ${userId})`);
+            } else if (rule.condition === 'custom' && rule.customQuery) {
+                filters.push(rule.customQuery);
+            }
+        });
+
+        return filters;
+    } catch (error) {
+        console.error('[PermissionService] Error building row permission filters:', error);
+        return [];
+    }
+}
+
+
+/**
+ * Get permission configuration history from local database
+ * OFFLINE-FIRST: Reads from WatermelonDB
+ */
+export async function getPermissionConfigHistory(): Promise<PermissionConfig[]> {
+    try {
+        console.log('[PermissionService] Fetching permission config history from LOCAL DB...');
+        const db = getDatabase();
+        const records = await db.get<PermissionConfigModel>('permission_config')
+            .query(Q.sortBy('created_at', Q.desc))
+            .fetch();
+
+        return records.map(doc => ({
+            $id: doc.appwriteId,
+            version: doc.configVersion,
+            isActive: doc.isActive,
+            roles: typeof doc.roles === 'string' ? JSON.parse(doc.roles) : doc.roles,
+            collectionPermissions: typeof doc.collectionPermissions === 'string'
+                ? JSON.parse(doc.collectionPermissions)
+                : doc.collectionPermissions,
+            rowPermissions: typeof doc.rowPermissions === 'string'
+                ? JSON.parse(doc.rowPermissions)
+                : doc.rowPermissions,
+            $createdAt: doc.createdAt.toISOString(),
+            $updatedAt: doc.updatedAt.toISOString(),
+        }));
+    } catch (error) {
+        console.error('[PermissionService] Error getting permission history:', error);
+        return [];
+    }
+}
+
+/**
+ * Activate a specific permission configuration
+ * OFFLINE-FIRST: Updates local DB
+ */
+export async function activatePermissionConfig(configId: string): Promise<boolean> {
+    try {
+        console.log('[PermissionService] Activating permission config in LOCAL DB:', configId);
+        const db = getDatabase();
+
+        // 1. Deactivate current config
+        const activeConfigs = await db.get<PermissionConfigModel>('permission_config')
+            .query(Q.where('is_active', true))
+            .fetch();
+
+        // 2. Find target config
+        const targetConfigs = await db.get<PermissionConfigModel>('permission_config')
+            .query(Q.where('appwrite_id', configId))
+            .fetch();
+
+        if (targetConfigs.length === 0) {
+            console.warn('[PermissionService] Target config not found:', configId);
+            return false;
+        }
+
+        await db.write(async () => {
+            const updates = [
+                ...activeConfigs.map(c => c.prepareUpdate(record => { record.isActive = false; })),
+                ...targetConfigs.map(c => c.prepareUpdate(record => { record.isActive = true; }))
+            ];
+            await db.batch(...updates);
+        });
+
+        console.log('[PermissionService] Successfully activated config:', configId);
+        return true;
+    } catch (error) {
+        console.error('[PermissionService] Error activating config:', error);
+        return false;
+    }
+}
+
 // Export all other utility functions that don't need database access
 export * from '@/types/permissions';

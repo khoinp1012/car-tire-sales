@@ -41,7 +41,7 @@ export function ExampleUIPermissions() {
             <PermissionGuard
                 collection="sales"
                 action="delete"
-                fallback={<Text>You don't have permission to delete sales</Text>}
+                fallback={<Text>You don&apos;t have permission to delete sales</Text>}
             >
                 <Button title="Delete Sale" onPress={() => { }} />
             </PermissionGuard>
@@ -56,6 +56,7 @@ export function ExampleHookPermissions() {
     const { canAccess, userRole, isAdmin, loading } = usePermissions();
 
     const handleCreateInventory = async () => {
+        const createInventoryItem = () => console.log('Creating item...');
         // Check permission before action
         if (await canAccess('inventory', 'create')) {
             // User has permission, proceed

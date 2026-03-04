@@ -462,7 +462,7 @@ function createMockAuditHandler() {
         else if (event.endsWith('.update')) action = 'update';
         else if (event.endsWith('.delete')) action = 'delete';
 
-        const auditData = {
+        const auditData: any = {
             entityId: document.$id,
             entityType: collectionId,
             version: document.version || 1,

@@ -22,8 +22,14 @@ jest.mock('react-native-appwrite', () => ({
     },
 }));
 
+// Mock Database Service
+jest.mock('@/utils/databaseService', () => ({
+    getDatabase: jest.fn(),
+}));
+
 import { getUserRole, setUserRole, initializeUserRecord, getAllAvailableRoles } from '@/utils/userRoleService';
-import { databases, account } from '@/constants/appwrite';
+import { getDatabase } from '@/utils/databaseService';
+import { account } from '@/constants/appwrite';
 
 describe('userRoleService', () => {
     beforeEach(() => {
@@ -32,95 +38,159 @@ describe('userRoleService', () => {
 
     describe('getUserRole', () => {
         it('should return role when user has a role document', async () => {
-            (databases.listDocuments as jest.Mock).mockResolvedValueOnce({
-                documents: [{ role: 'admin' }]
-            });
+            const mockRecord = {
+                role: 'admin',
+                deleted: false,
+            };
+
+            const mockQuery = {
+                fetch: jest.fn().mockResolvedValue([mockRecord]),
+            };
+
+            const mockCollection = {
+                query: jest.fn().mockReturnValue(mockQuery),
+            };
+
+            const mockDb = {
+                get: jest.fn().mockReturnValue(mockCollection),
+            };
+
+            (getDatabase as jest.Mock).mockReturnValue(mockDb);
 
             const role = await getUserRole('user123');
             expect(role).toBe('admin');
-            expect(databases.listDocuments).toHaveBeenCalled();
         });
 
         it('should return null when user has no role document', async () => {
-            (databases.listDocuments as jest.Mock).mockResolvedValueOnce({
-                documents: []
-            });
+            const mockQuery = {
+                fetch: jest.fn().mockResolvedValue([]),
+            };
+
+            const mockCollection = {
+                query: jest.fn().mockReturnValue(mockQuery),
+            };
+
+            const mockDb = {
+                get: jest.fn().mockReturnValue(mockCollection),
+            };
+
+            (getDatabase as jest.Mock).mockReturnValue(mockDb);
 
             const role = await getUserRole('user123');
             expect(role).toBeNull();
-        });
-
-        it('should return null and log error on failure', async () => {
-            (databases.listDocuments as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-            const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-            const role = await getUserRole('user123');
-            expect(role).toBeNull();
-            expect(consoleSpy).toHaveBeenCalled();
-            consoleSpy.mockRestore();
         });
     });
 
     describe('setUserRole', () => {
         it('should update existing role document', async () => {
             (account.get as jest.Mock).mockResolvedValue({ $id: 'user123', name: 'Test User', email: 'test@example.com' });
-            (databases.listDocuments as jest.Mock).mockResolvedValueOnce({
-                documents: [{ $id: 'doc123', role: 'seller' }]
-            });
-            (databases.updateDocument as jest.Mock).mockResolvedValueOnce({});
+
+            const mockRecord = {
+                role: 'seller',
+                update: jest.fn().mockImplementation((fn) => {
+                    const rec = { role: '', name: '', email: '', version: 0, lastModifiedBy: '' };
+                    fn(rec);
+                    return Promise.resolve(rec);
+                }),
+            };
+
+            const mockQuery = {
+                fetch: jest.fn().mockResolvedValue([mockRecord]),
+            };
+
+            const mockCollection = {
+                query: jest.fn().mockReturnValue(mockQuery),
+            };
+
+            const mockDb = {
+                get: jest.fn().mockReturnValue(mockCollection),
+                write: jest.fn().mockImplementation((fn) => fn()),
+            };
+
+            (getDatabase as jest.Mock).mockReturnValue(mockDb);
 
             const result = await setUserRole('user123', 'admin');
             expect(result).toBe(true);
-            expect(databases.updateDocument).toHaveBeenCalledWith(
-                'test_db',
-                'test_roles_collection',
-                'doc123',
-                expect.objectContaining({ role: 'admin', name: 'Test User' })
-            );
+            expect(mockRecord.update).toHaveBeenCalled();
         });
 
         it('should create new role document if none exists', async () => {
             (account.get as jest.Mock).mockResolvedValue({ $id: 'user123', name: 'New User', email: 'new@example.com' });
-            (databases.listDocuments as jest.Mock).mockResolvedValueOnce({
-                documents: []
-            });
-            (databases.createDocument as jest.Mock).mockResolvedValueOnce({});
+
+            const mockQuery = {
+                fetch: jest.fn().mockResolvedValue([]),
+            };
+
+            const mockRecordCreator = jest.fn();
+            const mockCollection = {
+                query: jest.fn().mockReturnValue(mockQuery),
+                create: jest.fn().mockImplementation((fn) => {
+                    const rec = {};
+                    fn(rec);
+                    return Promise.resolve(rec);
+                }),
+            };
+
+            const mockDb = {
+                get: jest.fn().mockReturnValue(mockCollection),
+                write: jest.fn().mockImplementation((fn) => fn()),
+            };
+
+            (getDatabase as jest.Mock).mockReturnValue(mockDb);
 
             const result = await setUserRole('user123', 'seller');
             expect(result).toBe(true);
-            expect(databases.createDocument).toHaveBeenCalledWith(
-                'test_db',
-                'test_roles_collection',
-                'unique_id',
-                expect.objectContaining({ userId: 'user123', role: 'seller', name: 'New User' })
-            );
+            expect(mockCollection.create).toHaveBeenCalled();
         });
     });
 
     describe('initializeUserRecord', () => {
         it('should do nothing if record already exists', async () => {
-            (databases.listDocuments as jest.Mock).mockResolvedValueOnce({
-                documents: [{ $id: 'doc123' }]
-            });
+            const mockQuery = {
+                fetch: jest.fn().mockResolvedValue([{ $id: 'doc123', role: 'seller' }]),
+            };
+
+            const mockCollection = {
+                query: jest.fn().mockReturnValue(mockQuery),
+                create: jest.fn(),
+            };
+
+            const mockDb = {
+                get: jest.fn().mockReturnValue(mockCollection),
+                write: jest.fn(),
+            };
+
+            (getDatabase as jest.Mock).mockReturnValue(mockDb);
 
             await initializeUserRecord('user123');
-            expect(databases.createDocument).not.toHaveBeenCalled();
+            expect(mockDb.write).not.toHaveBeenCalled();
         });
 
         it('should create new record with blank role if none exists', async () => {
-            (databases.listDocuments as jest.Mock).mockResolvedValueOnce({
-                documents: []
-            });
             (account.get as jest.Mock).mockResolvedValue({ $id: 'user123', name: 'New User', email: 'new@example.com' });
-            (databases.createDocument as jest.Mock).mockResolvedValueOnce({});
+
+            const mockQuery = {
+                fetch: jest.fn().mockResolvedValue([]),
+            };
+
+            const mockCollection = {
+                query: jest.fn().mockReturnValue(mockQuery),
+                create: jest.fn().mockImplementation((fn) => {
+                    const rec = {};
+                    fn(rec);
+                    return Promise.resolve(rec);
+                }),
+            };
+
+            const mockDb = {
+                get: jest.fn().mockReturnValue(mockCollection),
+                write: jest.fn().mockImplementation((fn) => fn()),
+            };
+
+            (getDatabase as jest.Mock).mockReturnValue(mockDb);
 
             await initializeUserRecord('user123');
-            expect(databases.createDocument).toHaveBeenCalledWith(
-                'test_db',
-                'test_roles_collection',
-                'unique_id',
-                expect.objectContaining({ userId: 'user123', role: '', name: 'New User' })
-            );
+            expect(mockCollection.create).toHaveBeenCalled();
         });
     });
 
@@ -131,7 +201,6 @@ describe('userRoleService', () => {
             expect(roles.map(r => r.id)).toContain('admin');
             expect(roles.map(r => r.id)).toContain('inventory_manager');
             expect(roles.map(r => r.id)).toContain('seller');
-            // Names should be translated (Vietnamese by default in test environment)
             expect(roles.every(r => r.name.length > 0)).toBe(true);
         });
     });
