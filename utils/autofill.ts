@@ -1,6 +1,7 @@
 // Autofill utility for inventory input fields - Offline-First with WatermelonDB
 import { Q } from '@nozbe/watermelondb';
 import { getDatabase } from './databaseService';
+import { Logger } from "./logger";
 
 export type AutofillField = {
   field_name: string;
@@ -36,7 +37,7 @@ export async function getAutofillValues(fieldName: string, collectionName: strin
   const propertyName = fieldMapping[fieldName] || fieldName;
 
   try {
-    console.log(`[Autofill] Extracting unique ${propertyName} from local ${tableName}...`);
+    Logger.info(`[Autofill] Extracting unique ${propertyName} from local ${tableName}...`);
 
     // Fetch all active (non-deleted) records from the table
     // We filter by 'deleted' to ensure we only suggest values from valid records
@@ -63,10 +64,10 @@ export async function getAutofillValues(fieldName: string, collectionName: strin
       return a.localeCompare(b);
     });
 
-    console.log(`[Autofill] Found ${result.length} unique values for ${fieldName}`);
+    Logger.info(`[Autofill] Found ${result.length} unique values for ${fieldName}`);
     return result;
   } catch (e) {
-    console.error(`[Autofill] Error extracting unique values for ${fieldName}:`, e);
+    Logger.error(`[Autofill] Error extracting unique values for ${fieldName}:`, e);
     return [];
   }
 }

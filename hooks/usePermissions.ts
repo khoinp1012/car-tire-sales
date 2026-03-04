@@ -9,6 +9,7 @@
  */
 
 import { account } from '@/constants/appwrite';
+import { Logger } from '../utils/logger';
 import {
     getUserPermissionContext,
     canAccessCollection,
@@ -41,7 +42,7 @@ export function usePermissions() {
                 await initializeUserRecord(user.$id);
                 return user;
             } catch (err) {
-                console.error('[usePermissions] Session error:', err);
+                Logger.error('[usePermissions] Session error:', err);
                 throw err;
             }
         },
@@ -136,7 +137,7 @@ export function usePermissions() {
      * Refresh user info - invalidates the cache to force a background refetch
      */
     const refresh = async () => {
-        console.log('[usePermissions] Refreshing permissions cache...');
+        Logger.info('[usePermissions] Refreshing permissions cache...');
         await queryClient.invalidateQueries({ queryKey: PERMISSION_KEYS.all });
     };
 

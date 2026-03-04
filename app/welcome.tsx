@@ -3,6 +3,7 @@ import { View } from '@/components/Themed';
 import { StyleSheet, ScrollView, Alert, Text } from 'react-native';
 import ThemedButton from '@/components/ThemedButton';
 import i18n from '@/constants/i18n';
+import { Logger } from "../utils/logger";
 import { useLanguage } from '@/components/LanguageContext';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import WelcomeText from '@/components/WelcomeText';
@@ -51,15 +52,15 @@ function WelcomeContent() {
   // Only refresh, don't add to dependency array to avoid infinite loop
   useFocusEffect(
     useCallback(() => {
-      console.log('[Welcome] Screen focused, refreshing permissions...');
+      Logger.info('[Welcome] Screen focused, refreshing permissions...');
       refresh();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // Empty deps - only run the effect, not recreate it
   );
 
-  console.log('[Welcome] Screen loaded with email:', email);
-  console.log('[Welcome] Current permissions:', permissions);
-  console.log('[Welcome] User role:', roleDescription);
+  Logger.info('[Welcome] Screen loaded with email:', email);
+  Logger.info('[Welcome] Current permissions:', permissions);
+  Logger.info('[Welcome] User role:', roleDescription);
 
   if (loading) {
     return (
@@ -97,7 +98,7 @@ function WelcomeContent() {
               <ThemedButton
                 title={i18n.t('manageRoles', { locale: lang })}
                 onPress={() => {
-                  console.log('[WelcomeScreen] Manage Roles clicked');
+                  Logger.info('[WelcomeScreen] Manage Roles clicked');
                   router.push('/manage_roles');
                 }}
                 color="#ff6f00"
@@ -106,7 +107,7 @@ function WelcomeContent() {
               <ThemedButton
                 title={i18n.t('manageUsers', { locale: lang })}
                 onPress={() => {
-                  console.log('[WelcomeScreen] Manage Users clicked');
+                  Logger.info('[WelcomeScreen] Manage Users clicked');
                   router.push('/manage_users');
                 }}
                 color="#ff6f00"
@@ -115,7 +116,7 @@ function WelcomeContent() {
               <ThemedButton
                 title={i18n.t('permissionHistory', { locale: lang })}
                 onPress={() => {
-                  console.log('[WelcomeScreen] Permission History clicked');
+                  Logger.info('[WelcomeScreen] Permission History clicked');
                   router.push('/permission_history');
                 }}
                 color="#ff6f00"
@@ -138,7 +139,7 @@ function WelcomeContent() {
                   <ThemedButton
                     title={i18n.t('findInventory', { locale: lang })}
                     onPress={() => {
-                      console.log('[WelcomeScreen] Find Inventory clicked');
+                      Logger.info('[WelcomeScreen] Find Inventory clicked');
                       router.push('/find_inventory');
                     }}
                     color="#1976d2"
@@ -149,7 +150,7 @@ function WelcomeContent() {
                   <ThemedButton
                     title={i18n.t('insertInventory', { locale: lang })}
                     onPress={() => {
-                      console.log('Insert Inventory clicked');
+                      Logger.info('Insert Inventory clicked');
                       router.push('/insert_inventory');
                     }}
                     color="#1976d2"
@@ -160,7 +161,7 @@ function WelcomeContent() {
                   <ThemedButton
                     title={i18n.t('scanQRToModify', { locale: lang })}
                     onPress={() => {
-                      console.log('Scan QR to Modify clicked');
+                      Logger.info('Scan QR to Modify clicked');
                       router.push('/scan_modify_inventory');
                     }}
                     color="#1976d2"
@@ -171,7 +172,7 @@ function WelcomeContent() {
                   <ThemedButton
                     title={i18n.t('reprintInventoryLabels', { locale: lang })}
                     onPress={() => {
-                      console.log('[WelcomeScreen] Reprint Inventory clicked');
+                      Logger.info('[WelcomeScreen] Reprint Inventory clicked');
                       router.push('/reprint_inventory');
                     }}
                     color="#1976d2"
@@ -182,7 +183,7 @@ function WelcomeContent() {
                   <ThemedButton
                     title={i18n.t('locationTracking', { locale: lang })}
                     onPress={() => {
-                      console.log('[WelcomeScreen] Location Tracking clicked');
+                      Logger.info('[WelcomeScreen] Location Tracking clicked');
                       router.push('/location_tracking');
                     }}
                     color="#1976d2"
@@ -205,7 +206,7 @@ function WelcomeContent() {
                   <ThemedButton
                     title={i18n.t('scanQRForPendingSale', { locale: lang })}
                     onPress={() => {
-                      console.log('Scan QR for Pending Sale clicked');
+                      Logger.info('Scan QR for Pending Sale clicked');
                       router.push('/scan_pending_sale');
                     }}
                     color="#4caf50"
@@ -216,7 +217,7 @@ function WelcomeContent() {
                   <ThemedButton
                     title={i18n.t('createSalesOrder', { locale: lang })}
                     onPress={() => {
-                      console.log('Create Sales Order clicked');
+                      Logger.info('Create Sales Order clicked');
                       router.push('/create_sales');
                     }}
                     color="#4caf50"
@@ -227,7 +228,7 @@ function WelcomeContent() {
                   <ThemedButton
                     title={i18n.t('addCustomerData', { locale: lang })}
                     onPress={() => {
-                      console.log('Add Customer clicked');
+                      Logger.info('Add Customer clicked');
                       router.push('/add_customer');
                     }}
                     color="#4caf50"
@@ -238,7 +239,7 @@ function WelcomeContent() {
                   <ThemedButton
                     title={i18n.t('printOrder', { locale: lang })}
                     onPress={() => {
-                      console.log('Print Order clicked');
+                      Logger.info('Print Order clicked');
                       router.push('/print_order');
                     }}
                     color="#4caf50"

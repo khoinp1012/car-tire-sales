@@ -6,6 +6,7 @@
  * Writes go to local DB and sync to Appwrite via syncService.
  */
 
+import { Logger } from "./logger";
 import { getDatabase } from './databaseService';
 import { PermissionConfig as PermissionConfigModel } from '@/models';
 import { Q } from '@nozbe/watermelondb';
@@ -25,7 +26,7 @@ import { getUserRole } from './userRoleService';
  */
 export async function getActivePermissionConfig(): Promise<PermissionConfig | null> {
     try {
-        console.log('[PermissionService] Fetching active permission config from LOCAL database...');
+        Logger.info('[PermissionService] Fetching active permission config from LOCAL database...');
 
         const db = getDatabase();
         const configs = await db.get<PermissionConfigModel>('permission_config')
@@ -38,12 +39,12 @@ export async function getActivePermissionConfig(): Promise<PermissionConfig | nu
             .fetch();
 
         if (configs.length === 0) {
-            console.warn('[PermissionService] No active permission config found in local DB!');
+            Logger.warn('[PermissionService] No active permission config found in local DB!');
             return null;
         }
 
         const doc = configs[0];
-        console.log('[PermissionService] Loaded config version from LOCAL DB:', doc.version);
+        Logger.info('[PermissionService] Loaded config version from LOCAL DB:', doc.version);
 
         // Parse JSON fields with safety checks
         const parseJsonField = (field: any, defaultValue: any) => {
@@ -53,7 +54,7 @@ export async function getActivePermissionConfig(): Promise<PermissionConfig | nu
             try {
                 return JSON.parse(field);
             } catch (e) {
-                console.error(`[PermissionService] Failed to parse JSON field:`, e);
+                Logger.error(`[PermissionService] Failed to parse JSON field:`, e);
                 return defaultValue;
             }
         };
@@ -72,7 +73,7 @@ export async function getActivePermissionConfig(): Promise<PermissionConfig | nu
 
         return config;
     } catch (error) {
-        console.error('[PermissionService] Error fetching permission config from LOCAL DB:', error);
+        Logger.error('[PermissionService] Error fetching permission config from LOCAL DB:', error);
         return null;
     }
 }
@@ -83,26 +84,26 @@ export async function getActivePermissionConfig(): Promise<PermissionConfig | nu
  */
 export async function getUserPermissionContext(userId: string): Promise<UserPermissionContext | null> {
     try {
-        console.log('[PermissionService] Getting permission context for user from LOCAL DB:', userId);
+        Logger.info('[PermissionService] Getting permission context for user from LOCAL DB:', userId);
 
         // Get user's role from local DB
         const userRole = await getUserRole(userId);
         if (!userRole) {
-            console.warn('[PermissionService] User has no role assigned');
+            Logger.warn('[PermissionService] User has no role assigned');
             return null;
         }
 
         // Get active permission config from local DB
         const config = await getActivePermissionConfig();
         if (!config) {
-            console.error('[PermissionService] No active permission config found in LOCAL DB');
+            Logger.error('[PermissionService] No active permission config found in LOCAL DB');
             return null;
         }
 
         // Get role definition
         const roleDefinition = config.roles[userRole];
         if (!roleDefinition) {
-            console.error('[PermissionService] Role definition not found:', userRole);
+            Logger.error('[PermissionService] Role definition not found:', userRole);
             return null;
         }
 
@@ -178,7 +179,7 @@ export async function getUserPermissionContext(userId: string): Promise<UserPerm
             features,
         };
 
-        console.log('[PermissionService] Built permission context from LOCAL DB:', {
+        Logger.info('[PermissionService] Built permission context from LOCAL DB:', {
             role: userRole,
             collections: Object.keys(allowedCollections),
             routes: allowedRoutes.length,
@@ -186,7 +187,7 @@ export async function getUserPermissionContext(userId: string): Promise<UserPerm
 
         return context;
     } catch (error) {
-        console.error('[PermissionService] Error getting user permission context from LOCAL DB:', error);
+        Logger.error('[PermissionService] Error getting user permission context from LOCAL DB:', error);
         return null;
     }
 }
@@ -224,7 +225,7 @@ export async function checkPermission(
             context,
         };
     } catch (error) {
-        console.error('[PermissionService] Error checking permission:', error);
+        Logger.error('[PermissionService] Error checking permission:', error);
         return {
             allowed: false,
             reason: 'Error checking permission',
@@ -240,7 +241,7 @@ export async function checkRoutePermission(userId: string, routeName: string): P
     try {
         const context = await getUserPermissionContext(userId);
         if (!context) {
-            console.warn('[PermissionService] No permission context for route check');
+            Logger.warn('[PermissionService] No permission context for route check');
             return false;
         }
 
@@ -250,7 +251,7 @@ export async function checkRoutePermission(userId: string, routeName: string): P
         // Check if route is in allowed routes (including wildcard)
         const isAllowed = context.allowedRoutes.includes('*') || context.allowedRoutes.includes(routeName);
 
-        console.log('[PermissionService] Route permission check from LOCAL DB:', {
+        Logger.info('[PermissionService] Route permission check from LOCAL DB:', {
             route: routeName,
             role: context.role,
             allowed: isAllowed,
@@ -258,7 +259,7 @@ export async function checkRoutePermission(userId: string, routeName: string): P
 
         return isAllowed;
     } catch (error) {
-        console.error('[PermissionService] Error checking route permission:', error);
+        Logger.error('[PermissionService] Error checking route permission:', error);
         return false;
     }
 }
@@ -277,7 +278,7 @@ export async function hasFeature(userId: string, featureName: string): Promise<b
 
         return context.features.includes('*') || context.features.includes(featureName);
     } catch (error) {
-        console.error('[PermissionService] Error checking feature:', error);
+        Logger.error('[PermissionService] Error checking feature:', error);
         return false;
     }
 }
@@ -316,7 +317,7 @@ export async function generateDocumentPermissions(
 
         return result;
     } catch (error) {
-        console.error('[PermissionService] Error generating document permissions:', error);
+        Logger.error('[PermissionService] Error generating document permissions:', error);
         return [];
     }
 }
@@ -331,7 +332,7 @@ export const canAccessRoute = checkRoutePermission;
  */
 export async function savePermissionConfig(config: PermissionConfig): Promise<boolean> {
     try {
-        console.log('[PermissionService] Saving permission config to LOCAL DB...');
+        Logger.info('[PermissionService] Saving permission config to LOCAL DB...');
         const db = getDatabase();
 
         // 1. Deactivate current config
@@ -361,10 +362,10 @@ export async function savePermissionConfig(config: PermissionConfig): Promise<bo
             });
         });
 
-        console.log('[PermissionService] Successfully saved config to LOCAL DB');
+        Logger.info('[PermissionService] Successfully saved config to LOCAL DB');
         return true;
     } catch (error) {
-        console.error('[PermissionService] Error saving permission config:', error);
+        Logger.error('[PermissionService] Error saving permission config:', error);
         return false;
     }
 }
@@ -405,7 +406,7 @@ export async function buildRowPermissionFilters(
 
         return filters;
     } catch (error) {
-        console.error('[PermissionService] Error building row permission filters:', error);
+        Logger.error('[PermissionService] Error building row permission filters:', error);
         return [];
     }
 }
@@ -417,7 +418,7 @@ export async function buildRowPermissionFilters(
  */
 export async function getPermissionConfigHistory(): Promise<PermissionConfig[]> {
     try {
-        console.log('[PermissionService] Fetching permission config history from LOCAL DB...');
+        Logger.info('[PermissionService] Fetching permission config history from LOCAL DB...');
         const db = getDatabase();
         const records = await db.get<PermissionConfigModel>('permission_config')
             .query(Q.sortBy('created_at', Q.desc))
@@ -438,7 +439,7 @@ export async function getPermissionConfigHistory(): Promise<PermissionConfig[]> 
             $updatedAt: doc.updatedAt.toISOString(),
         }));
     } catch (error) {
-        console.error('[PermissionService] Error getting permission history:', error);
+        Logger.error('[PermissionService] Error getting permission history:', error);
         return [];
     }
 }
@@ -449,7 +450,7 @@ export async function getPermissionConfigHistory(): Promise<PermissionConfig[]> 
  */
 export async function activatePermissionConfig(configId: string): Promise<boolean> {
     try {
-        console.log('[PermissionService] Activating permission config in LOCAL DB:', configId);
+        Logger.info('[PermissionService] Activating permission config in LOCAL DB:', configId);
         const db = getDatabase();
 
         // 1. Deactivate current config
@@ -463,7 +464,7 @@ export async function activatePermissionConfig(configId: string): Promise<boolea
             .fetch();
 
         if (targetConfigs.length === 0) {
-            console.warn('[PermissionService] Target config not found:', configId);
+            Logger.warn('[PermissionService] Target config not found:', configId);
             return false;
         }
 
@@ -475,10 +476,10 @@ export async function activatePermissionConfig(configId: string): Promise<boolea
             await db.batch(...updates);
         });
 
-        console.log('[PermissionService] Successfully activated config:', configId);
+        Logger.info('[PermissionService] Successfully activated config:', configId);
         return true;
     } catch (error) {
-        console.error('[PermissionService] Error activating config:', error);
+        Logger.error('[PermissionService] Error activating config:', error);
         return false;
     }
 }

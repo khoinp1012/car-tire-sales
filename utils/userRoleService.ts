@@ -5,6 +5,7 @@
  * Writes go to local DB and sync to Appwrite via syncService.
  */
 
+import { Logger } from './logger';
 import { getDatabase } from './databaseService';
 import { UserRole } from '@/models';
 import { Q } from '@nozbe/watermelondb';
@@ -26,7 +27,7 @@ export const AVAILABLE_ROLES = [
  */
 export async function getUserRole(userId: string): Promise<string | null> {
     try {
-        console.log('[getUserRole] Fetching role for user from LOCAL DB:', userId);
+        Logger.info('[getUserRole] Fetching role for user from LOCAL DB:', userId);
 
         const db = getDatabase();
         const userRoles = await db.get<UserRole>('user_roles')
@@ -42,15 +43,15 @@ export async function getUserRole(userId: string): Promise<string | null> {
             const roleDoc = sorted[0];
 
             if (roleDoc.role) {
-                console.log('[getUserRole] Found role in LOCAL DB:', roleDoc.role);
+                Logger.info('[getUserRole] Found role in LOCAL DB:', roleDoc.role);
                 return roleDoc.role;
             }
         }
 
-        console.log('[getUserRole] No role found in LOCAL DB for user (or role is empty)');
+        Logger.info('[getUserRole] No role found in LOCAL DB for user (or role is empty)');
         return null;
     } catch (error) {
-        console.error('[getUserRole] Error fetching user role from LOCAL DB:', error);
+        Logger.error('[getUserRole] Error fetching user role from LOCAL DB:', error);
         return null;
     }
 }
@@ -63,7 +64,7 @@ export async function getUserRole(userId: string): Promise<string | null> {
  */
 export async function setUserRole(userId: string, role: string): Promise<boolean> {
     try {
-        console.log('[setUserRole] Setting role in LOCAL DB for user:', userId, 'to:', role);
+        Logger.info('[setUserRole] Setting role in LOCAL DB for user:', userId, 'to:', role);
 
         // Fetch user info to get name and email
         let userName = '';
@@ -81,7 +82,7 @@ export async function setUserRole(userId: string, role: string): Promise<boolean
                 userEmail = '';
             }
         } catch (err) {
-            console.warn('[setUserRole] Could not fetch user info:', err);
+            Logger.warn('[setUserRole] Could not fetch user info:', err);
         }
 
         const db = getDatabase();
@@ -105,7 +106,7 @@ export async function setUserRole(userId: string, role: string): Promise<boolean
                     record.version = (record.version || 0) + 1;
                     record.lastModifiedBy = userId;
                 });
-                console.log('[setUserRole] Updated existing role document in LOCAL DB with name/email');
+                Logger.info('[setUserRole] Updated existing role document in LOCAL DB with name/email');
             } else {
                 // Create new document
                 await db.get<UserRole>('user_roles').create(record => {
@@ -118,13 +119,13 @@ export async function setUserRole(userId: string, role: string): Promise<boolean
                     record.deleted = false;
                     record.lastModifiedBy = userId;
                 });
-                console.log('[setUserRole] Created new role document in LOCAL DB with name/email');
+                Logger.info('[setUserRole] Created new role document in LOCAL DB with name/email');
             }
         });
 
         return true;
     } catch (error) {
-        console.error('[setUserRole] Error setting user role in LOCAL DB:', error);
+        Logger.error('[setUserRole] Error setting user role in LOCAL DB:', error);
         return false;
     }
 }
@@ -156,7 +157,7 @@ export async function initializeUserRecord(userId: string): Promise<void> {
 
         if (existingRoles.length > 0) {
             const hasRole = existingRoles.some(r => r.role && r.role.length > 0);
-            console.log('[initializeUserRecord] User record exists. Has role:', hasRole);
+            Logger.info('[initializeUserRecord] User record exists. Has role:', hasRole);
             return;
         }
 
@@ -170,7 +171,7 @@ export async function initializeUserRecord(userId: string): Promise<void> {
                 userEmail = user.email || '';
             }
         } catch (err) {
-            console.warn('[initializeUserRecord] Could not fetch user info:', err);
+            Logger.warn('[initializeUserRecord] Could not fetch user info:', err);
         }
 
         // Create new user record with NO role assigned (empty string)
@@ -189,9 +190,9 @@ export async function initializeUserRecord(userId: string): Promise<void> {
             });
         });
 
-        console.log('[initializeUserRecord] Created initial blank record for user:', userId);
+        Logger.info('[initializeUserRecord] Created initial blank record for user:', userId);
     } catch (error) {
-        console.error('[initializeUserRecord] Error:', error);
+        Logger.error('[initializeUserRecord] Error:', error);
     }
 }
 
@@ -205,12 +206,12 @@ export async function initializeUserRole(userId: string, defaultRole: string = '
         const currentRole = await getUserRole(userId);
 
         if (!currentRole) {
-            console.log('[initializeUserRole] User has no role, setting default:', defaultRole);
+            Logger.info('[initializeUserRole] User has no role, setting default:', defaultRole);
             await setUserRole(userId, defaultRole);
         } else {
-            console.log('[initializeUserRole] User already has role:', currentRole);
+            Logger.info('[initializeUserRole] User already has role:', currentRole);
         }
     } catch (error) {
-        console.error('[initializeUserRole] Error initializing user role:', error);
+        Logger.error('[initializeUserRole] Error initializing user role:', error);
     }
 }
